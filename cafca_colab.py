@@ -25,13 +25,25 @@ import random
 import os
 
 target_scenario = 'OP_SUCCESS_RATE' # INPUT: OP_SUCCESS_RATE or COLLISION
-LOG_PATH = 'C:\Users\Hyun\IdeaProjects\StarPlateS\SoS_Extension\logs_full'
+LOG_PATH = 'C:\Users\Hyun\IdeaProjects\StarPlateS\SoS_Extension\logs_full\oracle_temp'
 V_PATH = 'C:\Users\Hyun\IdeaProjects\CAFCA'
 print('In Log Folder : ', os.listdir(LOG_PATH))
 
+
+def main():
+  IM, FIM = IMGenerator()
+  IMtoTxt(IM)
+  RunSPADE(FIM)
+
+  # TxttoIM()
+
+if __name__ == "__main__":
+  main()
+
 """## Interaction model generator"""
 def IMGenerator():
-  IM = [] # A set of interaction model ======> IM = [im0, im1, im2, im3, ...]
+  IM = [] # A set of all interaction models ======> IM = [im0, im1, im2, im3, ...]
+  FIM = [] # A set of failed interaction models
   curnt_id = -1
   f = open(join(V_PATH, target_scenario+'_Verification_Results.csv')) # To check the Verification results
   v_results = f.readlines()
@@ -42,6 +54,8 @@ def IMGenerator():
     if int(strings[0]) != curnt_id: # Change to the new failure scenario id
       if len(im) == 4:
         IM.append(copy.deepcopy(im))
+        if im[1].equals("FALSE"):
+          FIM.append(copy.deepcopy(im))
       im.clear()
       if curnt_id != -1: # Check the progress in console
         print("> Finished\n")
@@ -150,7 +164,7 @@ def IMGenerator():
       f.close()
       im.append(copy.deepcopy(interaction))
   print(IM[random.randrange(0,int(len(os.listdir(LOG_PATH))/4))]) # Random print of a single m
-  return IM
+  return IM, FIM
 
 """## Interaction model txt Writer
 
@@ -197,10 +211,6 @@ def TxttoIM():
     im_[3] = StringToList(im_[3])
     IM_.append(copy.deepcopy(im_))
 
-  print(IM_[58])
-  print(IM[58])
-
-  print(IM_[1][2][18])
   return IM_
 
 """# **Fuzzy Clustering for Initial Pattern Mining**
