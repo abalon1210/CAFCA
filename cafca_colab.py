@@ -24,21 +24,10 @@ import copy
 import random
 import os
 
-target_scenario = 'OP_SUCCESS_RATE' # INPUT: OP_SUCCESS_RATE or COLLISION
-LOG_PATH = 'C:\Users\Hyun\IdeaProjects\StarPlateS\SoS_Extension\logs_full\oracle_temp'
-V_PATH = 'C:\Users\Hyun\IdeaProjects\CAFCA'
+target_scenario = 'OP_SUCCESS_RATE'  # INPUT: OP_SUCCESS_RATE or COLLISION
+LOG_PATH = 'C:/Users/Hyun/IdeaProjects/StarPlateS/SoS_Extension/logs_full/oracle_temp'
+V_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA'
 print('In Log Folder : ', os.listdir(LOG_PATH))
-
-
-def main():
-  IM, FIM = IMGenerator()
-  IMtoTxt(IM)
-  RunSPADE(FIM)
-
-  # TxttoIM()
-
-if __name__ == "__main__":
-  main()
 
 """## Interaction model generator"""
 def IMGenerator():
@@ -54,7 +43,7 @@ def IMGenerator():
     if int(strings[0]) != curnt_id: # Change to the new failure scenario id
       if len(im) == 4:
         IM.append(copy.deepcopy(im))
-        if im[1].equals("FALSE"):
+        if im[1] == "FALSE":
           FIM.append(copy.deepcopy(im))
       im.clear()
       if curnt_id != -1: # Check the progress in console
@@ -63,8 +52,10 @@ def IMGenerator():
       curnt_id = int(strings[0])
       im.append(curnt_id) # Add the file id
       for line in v_results:
-        if '/'+str(curnt_id)+'_' in line.split(',')[0]:  # Add the P/F results of the log file
-          im.append(line.split(',')[1])
+        if '\\'+str(curnt_id)+'_' in line.split(',')[0]:  # Add the P/F results of the log file
+          p_f = line.split(',')[1]
+          im.append(p_f[:len(p_f)-1])
+          break
     if 'vehicleData' in strings[1]: # Extract env data
       env = [] # ======> Env = [state0, state1, state2, ...] ordered chronologically
       f = open(join(LOG_PATH,filename), 'r')
@@ -169,7 +160,7 @@ def IMGenerator():
 """## Interaction model txt Writer
 
 """
-def IMtoTxt(IM):
+def IMtoTxt(IM, fname):
   def ListToString(list_):
     ret = ''
     for sublist_ in list_:
@@ -181,7 +172,7 @@ def IMtoTxt(IM):
     return ret[:-1]
 
   # File write of IM
-  f = open(join(V_PATH,'InteractionModels.txt'), 'w')
+  f = open(join(V_PATH,fname), 'w')
   for im in IM:
     f.write(str(im[0]) + '/' + str(im[1]) + '/' + ListToString(im[2]) + '/' + ListToString(im[3]) + '\n')
   f.close()
@@ -189,7 +180,7 @@ def IMtoTxt(IM):
 """## Interaction model txt reader
 
 """
-def TxttoIM():
+def TxttoIM(fname):
   def StringToList(string_):
     ret = []
     sublists = string_.split('|')
@@ -201,7 +192,7 @@ def TxttoIM():
       ret.append(copy.deepcopy(sublist))
     return ret
 
-  f = open(join(V_PATH, 'InteractionModels.txt'), 'r')
+  f = open(join(V_PATH, fname), 'r')
   IM_ = []
   lines = f.readlines()
   for line in lines:
@@ -210,7 +201,7 @@ def TxttoIM():
     im_[2] = StringToList(im_[2])
     im_[3] = StringToList(im_[3])
     IM_.append(copy.deepcopy(im_))
-
+  print("FINISH TxttoIM function\n")
   return IM_
 
 """# **Fuzzy Clustering for Initial Pattern Mining**
@@ -549,12 +540,17 @@ def EnumerateFrequentSequence(freqEleList, freqSeqEle, sup_threshold): # find th
 
   return freqSeqEle
 
-def SPADE_PatternMining(IMs, sup_threshold): 
+def SPADE_PatternMining(IMs, sup_threshold):
+  print("START Sequence DB BUILDER\n")
   sequences = SequenceDBBuilder(IMs)
+  print("START VerticalIDListBuilder\n")
   singleIdList = VerticalIdListBuilder(sequences)
+  print("START FrequentElementExtractor\n")
   frequentMsgList = FrequentElementExtractor(singleIdList, sup_threshold)
+  print("START FrequentElement2SequenceExtractor\n")
   frequent2MsgSeqList = Frequent2ElementSequenceExtractor(frequentMsgList, sup_threshold)
   freqSeqEle = {} # key: sequence atoms (3-sequence, 4-sequence,...), value: set of (seqid, time)
+  print("START EnumFrequentSequence\n")
   frequentMsgSeqList = EnumerateFrequentSequence(frequent2MsgSeqList, freqSeqEle, sup_threshold)
   # frequentMsgSeqList.update(frequent2MsgSeqList)
   # frequentMsgSeqList.update(frequentMsgList)
@@ -1027,6 +1023,17 @@ def EvaluateF1P(oracle,index,cluster): #oracle: [[str]], index: [str], cluster: 
     ret.append(2*F_C_O*F_O_C/(F_C_O+F_O_C))
 
     return ret
+
+
+def main():
+  # IM, FIM = IMGenerator()
+  # IMtoTxt(IM,'InteractionModels.txt')
+  # IMtoTxt(FIM, 'FailedInteractionModels.txt')
+  FIM = TxttoIM('FailedInteractionModels.txt')
+  RunSPADE(FIM)
+
+if __name__ == "__main__":
+  main()
 
 # """# **Git synchronizing**
 #
