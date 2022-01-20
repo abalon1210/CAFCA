@@ -39,7 +39,7 @@ def IMGenerator():
   f.close()
   im = [] # an interaction model ======> im = [file_id, P/F, Interaction, Env]
   for filename in os.listdir(LOG_PATH):
-    if ".txt" not in filename:
+    if "plnData.txt" not in filename and "vehicleData.txt" not in filename:
       continue
     strings = filename.split('_')
     if int(strings[0]) != curnt_id: # Change to the new failure scenario id
@@ -156,13 +156,14 @@ def IMGenerator():
           interaction.append(copy.deepcopy(message))
       f.close()
       im.append(copy.deepcopy(interaction))
-  print(IM[random.randrange(0,int(len(os.listdir(LOG_PATH))/4))]) # Random print of a single m
+  print(IM[random.randrange(0,4000)]) # Random print of a single m
   return IM, FIM
 
 """## Interaction model txt Writer
 
 """
 def IMtoTxt(IM, fname):
+  print("IMtoTxt=== " + fname)
   def ListToString(list_):
     ret = ''
     for sublist_ in list_:
