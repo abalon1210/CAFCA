@@ -25,7 +25,7 @@ import random
 import os
 
 target_scenario = 'OP_SUCCESS_RATE'  # INPUT: OP_SUCCESS_RATE or COLLISION
-LOG_PATH = 'C:/Users/Hyun/IdeaProjects/StarPlateS/SoS_Extension/logs_full/oracle_temp'
+LOG_PATH = 'C:/Users/Hyun/IdeaProjects/StarPlateS/SoS_Extension/logs_full'
 V_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA'
 print('In Log Folder : ', os.listdir(LOG_PATH))
 
@@ -1046,10 +1046,10 @@ def EvaluateF1P(oracle,index,cluster): #oracle: [[str]], index: [str], cluster: 
 
 
 def main():
-  # IM, FIM = IMGenerator()
-  # IMtoTxt(IM,'InteractionModels.txt')
-  # IMtoTxt(FIM, 'FailedInteractionModels.txt')
-  FIM = TxttoIM('FailedInteractionModels.txt')
+  IM, FIM = IMGenerator()
+  IMtoTxt(IM,'InteractionModels.txt')
+  IMtoTxt(FIM, 'FailedInteractionModels.txt')
+  # FIM = TxttoIM('FailedInteractionModels.txt')
   RunSPADE(FIM)
 
 if __name__ == "__main__":
