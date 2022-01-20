@@ -569,11 +569,31 @@ def SPADE_PatternMining(IMs, sup_threshold):
 
   return sortedFrequentSeqList
 
+def SPADEListtoString(item_list):
+  ret = ''
+  for item_ in item_list:
+    ret += item_ + "/"
+  return ret[:-1]
+
+def SPADESettoString(item_set):
+  ret = ''
+  for item_tuple in item_set:
+    for item_ in item_tuple:
+      ret += str(item_) + ":"
+    ret = ret [:-1]
+    ret += "/"
+  return ret[:-1]
+
 def RunSPADE(IM):
-  s_threshold = len(IM)*0.5
+  s_threshold = len(IM)*0.9
   frequentSequenceSet = SPADE_PatternMining(IM, s_threshold)
   print(frequentSequenceSet)
   print(len(frequentSequenceSet))
+
+  f = open(join(V_PATH, 'SPADE_0.txt'), 'w')
+  for item in frequentSequenceSet:
+    f.write(SPADEListtoString(item[0]) + '\n' + SPADESettoString(list(item[2])) + '\n')
+  f.close()
 
 """### LOGLINER & LOGFAULTFLAGGER"""
 
