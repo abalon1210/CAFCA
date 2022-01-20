@@ -39,6 +39,8 @@ def IMGenerator():
   f.close()
   im = [] # an interaction model ======> im = [file_id, P/F, Interaction, Env]
   for filename in os.listdir(LOG_PATH):
+    if ".txt" not in filename:
+      continue
     strings = filename.split('_')
     if int(strings[0]) != curnt_id: # Change to the new failure scenario id
       if len(im) == 4:
