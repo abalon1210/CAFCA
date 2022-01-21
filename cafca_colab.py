@@ -588,16 +588,17 @@ def SPADESettoString(item_set):
   return ret[:-1]
 
 def RunSPADE(IM):
-  random.shuffle(IM)
   s_threshold = len(IM)*0.75
-  frequentSequenceSet = SPADE_PatternMining(IM, s_threshold)
-  print(frequentSequenceSet)
-  print(len(frequentSequenceSet))
+  for i in range(2, 12):
+    random.shuffle(IM)
+    frequentSequenceSet = SPADE_PatternMining(IM, s_threshold)
+    print(frequentSequenceSet)
+    print(len(frequentSequenceSet))
 
-  f = open(join(V_PATH, 'SPADE_0.txt'), 'w')
-  for item in frequentSequenceSet:
-    f.write(SPADEListtoString(item[0]) + '\n' + SPADESettoString(list(item[2])) + '\n')
-  f.close()
+    f = open(join(V_PATH, 'SPADE_' + i + '_0.75.txt'), 'w')
+    for item in frequentSequenceSet:
+      f.write(SPADEListtoString(item[0]) + '\n' + SPADESettoString(list(item[2])) + '\n')
+    f.close()
 
 """### LOGLINER & LOGFAULTFLAGGER"""
 
