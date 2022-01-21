@@ -595,7 +595,7 @@ def RunSPADE(IM):
     print(frequentSequenceSet)
     print(len(frequentSequenceSet))
 
-    f = open(join(V_PATH, 'SPADE_' + i + '_0.75.txt'), 'w')
+    f = open(join(V_PATH, 'SPADE_' + str(i) + '_0.75.txt'), 'w')
     for item in frequentSequenceSet:
       f.write(SPADEListtoString(item[0]) + '\n' + SPADESettoString(list(item[2])) + '\n')
     f.close()
