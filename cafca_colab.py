@@ -588,7 +588,8 @@ def SPADESettoString(item_set):
   return ret[:-1]
 
 def RunSPADE(IM):
-  s_threshold = len(IM)*0.9
+  random.shuffle(IM)
+  s_threshold = len(IM)*0.75
   frequentSequenceSet = SPADE_PatternMining(IM, s_threshold)
   print(frequentSequenceSet)
   print(len(frequentSequenceSet))
@@ -1050,8 +1051,8 @@ def EvaluateF1P(oracle,index,cluster): #oracle: [[str]], index: [str], cluster: 
 
 def main():
   IM, FIM = IMGenerator()
-  IMtoTxt(IM,'InteractionModels.txt')
-  IMtoTxt(FIM, 'FailedInteractionModels.txt')
+  # IMtoTxt(IM,'InteractionModels.txt')
+  # IMtoTxt(FIM, 'FailedInteractionModels.txt')
   # FIM = TxttoIM('FailedInteractionModels.txt')
   RunSPADE(FIM)
 
