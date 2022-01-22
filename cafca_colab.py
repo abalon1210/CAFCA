@@ -21,8 +21,8 @@ Abstract the observable environmental sensing data & communication traces from t
 ## Log Parser
 """
 import copy
-import random
 import os
+import gc
 
 target_scenario = 'OP_SUCCESS_RATE'  # INPUT: OP_SUCCESS_RATE or COLLISION
 LOG_PATH = 'C:/Users/Hyun/IdeaProjects/StarPlateS/SoS_Extension/logs_full'
@@ -156,7 +156,7 @@ def IMGenerator():
           interaction.append(copy.deepcopy(message))
       f.close()
       im.append(copy.deepcopy(interaction))
-  print(IM[random.randrange(0,4000)]) # Random print of a single m
+  print(IM[1865]) # Random print of a single m
   return IM, FIM
 
 """## Interaction model txt Writer
@@ -589,16 +589,21 @@ def SPADESettoString(item_set):
 
 def RunSPADE(IM):
   s_threshold = len(IM)*0.75
-  for i in range(2, 12):
+  for i in range(21, 31):
+    random.seed(i)
     random.shuffle(IM)
+    print(IM[0])
     frequentSequenceSet = SPADE_PatternMining(IM, s_threshold)
     print(frequentSequenceSet)
     print(len(frequentSequenceSet))
 
-    f = open(join(V_PATH, 'SPADE_' + str(i) + '_0.75.txt'), 'w')
+    f = open(join(V_PATH, 'SPADE_11_0.78.txt'), 'w')
     for item in frequentSequenceSet:
       f.write(SPADEListtoString(item[0]) + '\n' + SPADESettoString(list(item[2])) + '\n')
     f.close()
+
+  # del frequentSequenceSet
+  # gc.collect()
 
 """### LOGLINER & LOGFAULTFLAGGER"""
 
