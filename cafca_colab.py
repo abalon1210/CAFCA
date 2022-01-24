@@ -673,11 +673,20 @@ def LogLiner(IMs, N):
   lineIDF = LogLineIDFBuilder(logs, corpus)
   flaggedLines = LogLineFlagger(logs, lineIDF, N)
   logVecotrs = Vectorization(flaggedLines, corpus)
-  return flaggedLines, logVecotrs
+  return flaggedLines, logVecotrs, lineIDF
 
 def RunLogLiner(IM):
-  flaggedLines, logVecotrs = LogLiner(IM, 5)
-  print(flaggedLines)
+
+  # for i in range(0, 30):
+  #   random.shuffle(IM)
+  print(IM[0])
+  flaggedLines, logVecotrs, lineIDF = LogLiner(IM, 5)
+  print(lineIDF)
+
+  # f = open(join(V_PATH, 'LogLiner_' + i + '.csv'), 'w')
+  # for item in lineIDF:
+  #   f.write(item[0] + ',' + item[1] + '\n')
+  # f.close()
 
 """####Processing ideal examples of fault class"""
 def FaultClassProcess():
@@ -1060,7 +1069,8 @@ def main():
   # IMtoTxt(IM,'InteractionModels.txt')
   # IMtoTxt(FIM, 'FailedInteractionModels.txt')
   # FIM = TxttoIM('FailedInteractionModels.txt')
-  RunSPADE(FIM)
+  # RunSPADE(FIM)
+  RunLogLiner(FIM)
 
 if __name__ == "__main__":
   main()
