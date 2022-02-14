@@ -894,6 +894,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, C_VALUE): # TODO cl_type: 
 
 def RunFCM(IM_, oracle):
   # IM Selection (Random)
+  # C_VALUE setting codes by the randomly selelcted subset
 
   # Run FCM with hyperparam settings
   for DELAY_THRESHOLD in range(1, 11):
