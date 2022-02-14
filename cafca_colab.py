@@ -817,23 +817,27 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, C_VALUE): # TODO cl_type: 
   simvalues = [[random.randrange(0,1) for i in range(len(IM_))] for j in range(C_VALUE)]
   memberships = [[random.randrange(0,1) for i in range(len(IM_))] for j in range(C_VALUE)]
   diss = [[random.randrange(0,1) for i in range(len(IM_))] for j in range(len(C_VALUE))]
-  clusters = []
   iterations = 0
 
   while True: # Initial selection of C models from the whole models
     initial_sims = []
     patterns = []
+    max_flag = True
     for i in range(0, C_VALUE): # Select C numbers of models
       item = IM_[random.randint(0,len(IM_))]
       if item not in patterns:
         patterns.append(item)
     for i in range(0, len(patterns)):
       for j in range(i+1, len(patterns)):
-        sim_value = CAFCASimCal(patterns[i], patterns[j], DELAY_THRESHOLD) # Calculate the LCS_Sim values for each combination of initally selected models
-        if sim_value > MAX_INIT_SIM_THRESHOLD: # If two of them are highly simialr, choose the other models
-          continue
-        initial_sims.append(sim_value)
-    if len(initial_sims) > 0 and sum(initial_sims)/len(initial_sims) < INIT_SIM_THRESHOLD: # If the average of the LCS_sim values of the models is non-acceptable, find other set of models
+        init_sim_value = CAFCASimCal(patterns[i], patterns[j], DELAY_THRESHOLD) # Calculate the LCS_Sim values for each combination of initally selected models
+        if init_sim_value > MAX_INIT_SIM_THRESHOLD: # If two of them are highly simialr, choose the other models
+          max_flag = False
+          break
+        initial_sims.append(init_sim_value)
+      if not max_flag:
+        initial_sims.clear()
+        break
+    if max_flag and len(initial_sims) > 0 and sum(initial_sims)/len(initial_sims) < INIT_SIM_THRESHOLD: # If the average of the LCS_sim values of the models is non-acceptable, find other set of models
       break
 
   prev_objs = -1 # Sum of Squared Errors for Fuzzy C-means clustering
@@ -843,7 +847,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, C_VALUE): # TODO cl_type: 
     for j in range(C_VALUE):
       for k in range(len(IM_)):
         simvalues[j][k] = CAFCASimCal(patterns[j], IM_[k], DELAY_THRESHOLD)
-        diss[j][k] = 1 - simvalues[j][i]
+        diss[j][k] = 1 - simvalues[j][k]
 
     # Membership caluclation & clustering
     clusters = []
