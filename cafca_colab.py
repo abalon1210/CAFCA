@@ -890,6 +890,22 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, C_VALUE): # TODO cl_type: 
       prev_objs = objs
     iterations += 1
 
+  return patterns, clusters
+
+def RunFCM(IM_, oracle):
+  # IM Selection (Random)
+
+  # Run FCM with hyperparam settings
+  for DELAY_THRESHOLD in range(1, 11):
+    for SIM_THRESHOLD in range(5, 50):
+      patterns, clusters = FCM(0, IM_, DELAY_THRESHOLD*0.1, SIM_THRESHOLD*0.01)
+
+      # Evaluate the pattern mining & clustering results
+      # PIT (+ for each class), PITW (+ for each class), F1P, time
+      # IdealPatternReader(), PIT(), PITW()
+
+  # Save the inputs, patterns, clusters, and evaluation results
+
 """# **Extended SBFL for Pattern Elaboration**
 
 Extend SBFL approach to make the patterns more elaborative using failed & passed logs
