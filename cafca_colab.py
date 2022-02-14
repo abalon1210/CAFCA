@@ -320,7 +320,6 @@ def Quantification(distance): # 2: Very far / 1: Far / 0 : Appropriate / -1 : Cl
 # print(EnvStateCompare(IM_[1][3][0], IM_[1][3][500]))
 
 """###LCS Algorithm"""
-
 # The function you need to call when you try to calculate the similarity based on the LCS and ESMIC function.
 # Inputs: two models (pattern and input), d_threshold
 # Outputs: The most critical LCS among possible LCS generation sets, the LCS similarity value with the pattern and input models.
@@ -328,7 +327,8 @@ def CAFCASimCal(im_pattern, im_input, d_threshold):
   p = 0.5
   q = 0.5
   generated_pattern, avg_env_sim = GetPattern(im_pattern, im_input, d_threshold)
-  return p*(len(generated_pattern) / len(im_pattern) * len(im_input)) + q*avg_env_sim
+  return p * (len(generated_pattern[2]) / len(im_pattern) * len(im_input)) + q * avg_env_sim
+
 
 def PatternExtractor(im_pattern, im_input, d_threshold):
   pattern = im_pattern[2]
@@ -337,49 +337,60 @@ def PatternExtractor(im_pattern, im_input, d_threshold):
   input_env = im_input[3]
   len_ptn = len(pattern)
   len_input = len(input)
-  LCS = [[0]*(len_input+1) for i in range(len_ptn+1)]
+  LCS = [[0] * (len_input + 1) for i in range(len_ptn + 1)]
   pattern_prev_msg = None
   input_prev_msg = None
   env_sims = []
 
   # Generate the LCS table of the interaction models
-  for i in range(len_ptn+1):
-    for j in range(len_input+1):
-      flag, env_sim = ESMIC(pattern[i-1], input[j-1], pattern_prev_msg, input_prev_msg, pattern_env, input_env, d_threshold, 5, 0.8)
-      env_sims.append(env_sim)
+  for i in range(len_ptn + 1):
+    for j in range(len_input + 1):
+      flag, env_sim = ESMIC(pattern[i - 1], input[j - 1], pattern_prev_msg, input_prev_msg, pattern_env, input_env,
+                            d_threshold, 5, 0.8)
       if flag:  # Env State & Message Identity Checking (ESMIC) function usage example.
-          LCS[i][j] = LCS[i-1][j-1] + 1
-          if not pattern_prev_msg:                                                                                        # You need to check the previously matched messages for checking the message delivery intervals of the two messages, respectively
-            pattern_prev_msg = pattern[i-1]
-            input_prev_msg = input[j-1]
+        LCS[i][j] = LCS[i - 1][j - 1] + 1
+        env_sims.append(env_sim)  # Save the env_sim values when the two messages are matched.
+        if not pattern_prev_msg:  # You need to check the previously matched messages for checking the message delivery intervals of the two messages, respectively
+          pattern_prev_msg = pattern[i - 1]
+          input_prev_msg = input[j - 1]
       else:
-        LCS[i][j] = max(LCS[i][j-1], LCS[i-1][j])
+        LCS[i][j] = max(LCS[i][j - 1], LCS[i - 1][j])
 
   # Extract the LCS from the table
   ret = []
-  if LCS[len_ptn][len_input] == 0: return None
+  if LCS[len_ptn][len_input] == 0:
+    return None
   else:
     current = 0
-    for i in range(1,len_ptn+1):
-      for j in range(1, len_input+1):
+    for i in range(1, len_ptn + 1):
+      for j in range(1, len_input + 1):
         if LCS[i][j] > current:
           current += 1
-          if pattern[i-1].time >= 25.0: ret.append(pattern[i-1])  # TODO should be modified by model
-    return ret, sum(env_sims)/len(env_sims)
+          if pattern[i - 1].time >= 25.0: ret.append(pattern[i - 1])  # TODO should be modified by model
+    return ret, sum(env_sims) / len(env_sims)
 
-def GetPattern(im_pattern, im_input, d_threshold): # LCS pattern extraction function
+
+def GetPattern(im_pattern, im_input, d_threshold):  # LCS pattern extraction function
   if im_pattern == None:
     return im_input
   generated_lcs = []
   generated_avg_env_sim = []
+  ret = []  # returned pattern with the structure of im.
   T = [0, 25, 45, 65, 85]
   for t in T:
-    generated_pattern, avg_env_sim = PatternExtractor(InteractionSeqSlicer(im_pattern, t), InteractionSeqSlicer(im_input, t), d_threshold)
+    generated_pattern, avg_env_sim = PatternExtractor(InteractionSeqSlicer(im_pattern, t),
+                                                      InteractionSeqSlicer(im_input, t), d_threshold)
     generated_lcs.append(generated_pattern)
     generated_avg_env_sim.append(avg_env_sim)
-  return GetMaxContentLCS(generated_lcs, generated_avg_env_sim)
+  max_LCS, max_avg_env_sim = GetMaxContentLCS(generated_lcs, generated_avg_env_sim)
+  ret.append(copy.deepcopy(im_pattern[0]))
+  ret.append(copy.deepcopy(im_pattern[1]))
+  ret.append(copy.deepcopy(max_LCS))
+  ret.append(copy.deepcopy(im_pattern[3]))
+  return ret, max_avg_env_sim
 
-def GetMaxContentLCS(generated_lcs, generated_avg_env_sim): # GetMaxContentLCS among the generated LCSs
+
+def GetMaxContentLCS(generated_lcs, generated_avg_env_sim):  # GetMaxContentLCS among the generated LCSs
   ret_max = None
   ret_max_env = None
   max_contents = -1
@@ -388,12 +399,12 @@ def GetMaxContentLCS(generated_lcs, generated_avg_env_sim): # GetMaxContentLCS a
     contents = set()
     for message in lcs_pattern:
       contents.add(message[1])
-    if len(contents) > max_contents: # Compare the number of types of contents in LCS pattern
+    if len(contents) > max_contents:  # Compare the number of types of contents in LCS pattern
       max_contents = len(contents)
       ret_max = lcs_pattern
       ret_max_env = generated_avg_env_sim[idx]
       max_len = len(lcs_pattern)
-    elif len(contents) == max_contents: # If the number of content-types are same, select the shorter one.
+    elif len(contents) == max_contents:  # If the number of content-types are same, select the shorter one.
       if max_len > len(lcs_pattern):
         max_contents = len(contents)
         ret_max = lcs_pattern
@@ -402,7 +413,7 @@ def GetMaxContentLCS(generated_lcs, generated_avg_env_sim): # GetMaxContentLCS a
   return ret_max, ret_max_env
 
 
-def InteractionSeqSlicer(im, time): # Only slice the message sequences by the time TODO: If necessary, cover Env slicing too?
+def InteractionSeqSlicer(im,time):  # Only slice the message sequences by the time TODO: If necessary, cover Env slicing too?
   ret = copy.deepcopy(im)
   ret_interaction = []
   for message in im[2]:
