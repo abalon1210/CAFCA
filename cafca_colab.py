@@ -25,7 +25,7 @@ import os
 import gc
 
 target_scenario = 'OP_SUCCESS_RATE'  # INPUT: OP_SUCCESS_RATE or COLLISION
-LOG_PATH = 'C:/Users/Hyun/IdeaProjects/StarPlateS/SoS_Extension/logs_full'
+LOG_PATH = 'C:/Users/Hyun/IdeaProjects/StarPlateS/SoS_Extension/logs_full/'
 V_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA'
 print('In Log Folder : ', os.listdir(LOG_PATH))
 
@@ -156,7 +156,7 @@ def IMGenerator():
           interaction.append(copy.deepcopy(message))
       f.close()
       im.append(copy.deepcopy(interaction))
-  print(IM[1865]) # Random print of a single m
+  # print(IM[1865]) # Random print of a single m
   return IM, FIM
 
 """## Interaction model txt Writer
@@ -671,22 +671,31 @@ def LogLiner(IMs, N):
   corpus = []
   logs = LogAbstractor(IMs)
   lineIDF = LogLineIDFBuilder(logs, corpus)
-  flaggedLines = LogLineFlagger(logs, lineIDF, N)
-  logVecotrs = Vectorization(flaggedLines, corpus)
-  return flaggedLines, logVecotrs, lineIDF
+  # flaggedLines = LogLineFlagger(logs, lineIDF, N)
+  # logVecotrs = Vectorization(flaggedLines, corpus)
+  # return flaggedLines, logVecotrs
+  return lineIDF
 
-def RunLogLiner(IM):
+def RunLogLiner(IM, classification_data):
+  for i in range(0, 30):
+    random.shuffle(IM)
+    print(IM[0])
 
-  # for i in range(0, 30):
-  #   random.shuffle(IM)
-  print(IM[0])
-  flaggedLines, logVecotrs, lineIDF = LogLiner(IM, 5)
-  print(lineIDF)
+    for j in range(0, 12):
+      IM_batch = []
+      print(classification_data[j])
+      for im in IM:
+        if str(im[0])+'_0' in classification_data[j]:
+          IM_batch.append(im)
+      print(IM_batch)
+      # flaggedLines, logVecotrs = LogLiner(IM, 5)
+      lineIDF = LogLiner(IM_batch, 5)
+      print(lineIDF)
 
-  # f = open(join(V_PATH, 'LogLiner_' + i + '.csv'), 'w')
-  # for item in lineIDF:
-  #   f.write(item[0] + ',' + item[1] + '\n')
-  # f.close()
+      f = open(join(V_PATH, 'LogLiner_' + str(i) + '_' + str(j) + '.csv'), 'w')
+      for key, val in lineIDF.items():
+        f.write(str(key) + ',' + str(val) + '\n')
+      f.close()
 
 """####Processing ideal examples of fault class"""
 def FaultClassProcess():
@@ -1069,8 +1078,20 @@ def main():
   # IMtoTxt(IM,'InteractionModels.txt')
   # IMtoTxt(FIM, 'FailedInteractionModels.txt')
   # FIM = TxttoIM('FailedInteractionModels.txt')
+
+  f = open(join(V_PATH, target_scenario + '_Classification_Results_Test.csv'), encoding='UTF8')  # To check the Verification results
+  v_results = f.readlines()
+  f.close()
+
+  classification_data = []
+  for line in v_results:
+    line = line.replace(",,","")
+    line = line.replace("\n", "")
+    classification_data.append(line.split(','))
+    print(line.split(','))
+
   # RunSPADE(FIM)
-  RunLogLiner(FIM)
+  RunLogLiner(FIM, classification_data)
 
 if __name__ == "__main__":
   main()
