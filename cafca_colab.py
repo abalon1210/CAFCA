@@ -267,7 +267,7 @@ def EnvStateCompare(state_a, state_b): # Compare the identity of the two Env sta
         for i in range(0,len(distance_b)-len(base)+1):
           sim_values.append(cos_sim(base, np.array(distance_b[i:i+len(base)])))
   print(sim_values)
-  return max(sim_values)
+  return np.nanmax(sim_values)
 
 def cos_sim(A, B):
   return dot(A, B)/(norm(A)*norm(B))
