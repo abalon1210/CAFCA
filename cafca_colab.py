@@ -807,13 +807,10 @@ def RunLogFaultFlagger(IM, classLogs):
 import random
 import math
 
-def FCM(cl_type, IM_): # TODO cl_type: FCM, PFS (Picture Fuzzy Set), KS2M
+def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, C_VALUE): # TODO cl_type: FCM, PFS (Picture Fuzzy Set), KS2M
   INIT_SIM_THRESHOLD = 0.6
   MAX_INIT_SIM_THRESHOLD = 0.8
-  C_VALUE = 6
   SENSITIVITY_THRESHOLD = 0.3
-  DELAY_THRESHOLD = 0.5
-  SIM_THRESHOLD = 0.8
   MAX_ITERATION = 10000
   m = 2 # Fuzzy value
 
@@ -831,7 +828,7 @@ def FCM(cl_type, IM_): # TODO cl_type: FCM, PFS (Picture Fuzzy Set), KS2M
       if item not in patterns:
         patterns.append(item)
     for i in range(0, len(patterns)):
-      for j in range(i, len(patterns)):
+      for j in range(i+1, len(patterns)):
         sim_value = CAFCASimCal(patterns[i], patterns[j], DELAY_THRESHOLD) # Calculate the LCS_Sim values for each combination of initally selected models
         if sim_value > MAX_INIT_SIM_THRESHOLD: # If two of them are highly simialr, choose the other models
           continue
