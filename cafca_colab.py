@@ -11,6 +11,7 @@ Original file is located at
 
 # from google.colab import drive
 from os.path import join
+import time
 # drive.mount('/gdrive')
 # gdrive_root = '/gdrive/My Drive/'
 
@@ -1040,38 +1041,6 @@ def PITW(ideal_patterns, patterns, d_threshold):
 
   return ret_PITWs
 
-
-def RunFCM(IM_, oracle):
-  # IM Selection (Random)
-  random.shuffle(IM_)
-  IM_Batch = IM_[0:1000]
-  # C_VALUE setting codes by the randomly selelcted subset
-  C_VALUE = 0
-  oracl_batch = []
-  for cl in oracle:
-    cl_batch = []
-    assign_flag = False
-    for im in IM_Batch:
-      if im[0] in cl:
-        assign_flag = True
-        cl_batch.append(im[0])
-    if assign_flag:
-      C_VALUE += 1
-    oracl_batch.append(copy.deepcopy(cl_batch))
-
-  ideal_patterns = IdealPatternReader()
-
-  # Run FCM with hyperparam settings
-  for DELAY_THRESHOLD in range(1, 11):
-    for SIM_THRESHOLD in range(5, 50):
-      patterns, clusters = FCM(0, IM_, DELAY_THRESHOLD*0.1, SIM_THRESHOLD*0.01)
-
-      # Evaluate the pattern mining & clustering results
-      # PIT (+ for each class), PITW (+ for each class), F1P, time
-      # IdealPatternReader(), PIT(), PITW()
-
-  # Save the inputs, patterns, clusters, and evaluation results
-
 """# **Extended SBFL for Pattern Elaboration**
 
 Extend SBFL approach to make the patterns more elaborative using failed & passed logs
@@ -1265,6 +1234,52 @@ def EvaluateF1P(oracle,index,cluster): #oracle: [[str]], index: [str], cluster: 
     ret.append(2*F_C_O*F_O_C/(F_C_O+F_O_C))
 
     return ret
+
+def RunFCM(IM_, oracle):
+  # IM Selection (Random)
+  random.shuffle(IM_)
+  IM_Batch = IM_[0:1000]
+  # C_VALUE setting codes by the randomly selelcted subset
+  C_VALUE = 0
+  oracle_batch = []
+  for cl in oracle:
+    cl_batch = []
+    assign_flag = False
+    for im in IM_Batch:
+      if im[0] in cl:
+        assign_flag = True
+        cl_batch.append(im[0])
+    if assign_flag:
+      C_VALUE += 1
+    oracle_batch.append(copy.deepcopy(cl_batch))
+
+  ideal_patterns = IdealPatternReader()
+
+  f = open(join(V_PATH, "FCM_0.csv"), 'w')
+  ret = ""
+  # Run FCM with hyperparam settings
+  for DELAY_THRESHOLD in range(1, 11):
+    for SIM_THRESHOLD in range(5, 50):
+      start_time = time.time()
+      patterns, clusters = FCM(0, IM_, DELAY_THRESHOLD*0.1, SIM_THRESHOLD*0.01)
+      end_time = time.time()
+
+      # Evaluate the pattern mining & clustering results
+      # PIT (+ for each class), PITW (+ for each class), F1P, time
+      pit = PIT(ideal_patterns, patterns, DELAY_THRESHOLD*0.1)
+      pitw = PIT(ideal_patterns, patterns, DELAY_THRESHOLD*0.1)
+      f1p = EvaluateF1P(oracle_batch, IM_Batch, clusters)
+      print(DELAY_THRESHOLD*0.1 + ", " + SIM_THRESHOLD*0.01 + ": " +sum(pit) +"," + sum(pitw) + "," + f1p[-1] + "," + (end_time - start_time))
+      ret_pit = ""
+      for val in pit:
+        ret_pit += val + ","
+      ret_pitw = ""
+      for val in pitw:
+        ret_pitw += val + ","
+      ret += DELAY_THRESHOLD*0.1 + ", " + SIM_THRESHOLD*0.01 + "," + sum(pit) +"," + ret_pit + sum(pitw) + "," + ret_pitw + f1p[-1] + "," + (end_time - start_time) + "\n"
+  f.write(ret)
+  f.close()
+  # Save the inputs, patterns, clusters, and evaluation results
 
 
 def main():
