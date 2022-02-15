@@ -892,6 +892,77 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, C_VALUE): # TODO cl_type: 
 
   return patterns, clusters
 
+def IdealPatternReader(filepath):
+  ideals = []
+  for filename in os.listdir(join(V_PATH, filepath)):
+    interaction = []  # ======> interaction = [message0, message1, message2, ...] ordered chronologically
+    f = open(join(join(V_PATH, filepath),filename), 'r')
+    lines = f.readlines()
+    F_type = -1
+    split_count = -1
+    veh_roles = {}
+    for i in range(16, len(lines)):  # For each line in log file
+      message = []
+      line = lines[i]
+      line = ' '.join(line.split())  # Preprocessing
+      line = line.replace(' -', '')
+      line_items = line.split(' ')
+      if 'MF_Leave' in line:  # FollowerLeave type checking for veh role analysis
+        split_count = 2
+      elif 'EF_Leave' in line:
+        split_count = 1
+      if len(
+              line_items) > 5:  # For each message items => [time, command_sent, sender, sender_role, receiver, receiver_role]
+        time = line_items[0]
+        message.append(time)
+        command_sent = line_items[4]
+        message.append(command_sent)
+        if command_sent == 'MERGE_REQ':  # Role managmenet code by each role changing CS-level operations
+          veh_roles[line_items[1]] = 'Leader'
+          if line_items[5] not in veh_roles.keys() or veh_roles[line_items[5]] != 'Left':
+            veh_roles[line_items[5]] = 'Leader'
+        elif command_sent == 'SPLIT_REQ':
+          if line_items[1] not in veh_roles.keys() or veh_roles[line_items[1]] != 'Left':
+            veh_roles[line_items[1]] = 'Leader'
+        elif command_sent == 'LEAVE_REQ':
+          if line_items[1] not in veh_roles.keys() or veh_roles[line_items[1]] != 'Left':
+            veh_roles[line_items[1]] = 'Left'
+          if line_items[5] not in veh_roles.keys() or veh_roles[line_items[5]] != 'Left':
+            veh_roles[line_items[5]] = 'Leader'
+        elif command_sent == 'VOTE_LEADER':
+          if line_items[1] not in veh_roles.keys() or veh_roles[line_items[1]] != 'Left':
+            veh_roles[line_items[1]] = 'Left'
+        # elif command_sent == 'ELECTED_LEADER':
+        #   if line_items[1] not in veh_roles.keys() or veh_roles[line_items[1]] != 'Left':
+        #     veh_roles[line_items[1]] = 'Leader'
+        elif command_sent == 'MERGE_DONE':
+          if line_items[1] not in veh_roles.keys() or veh_roles[line_items[1]] != 'Left':
+            veh_roles.pop(line_items[1])
+        elif command_sent == 'SPLIT_DONE':
+          split_count -= 1
+          if split_count != 0:  # Just SPLIT operation && the first SPLIT in MF-LEAVE && LEADER-LEAVE
+            if line_items[5] not in veh_roles.keys() or veh_roles[line_items[5]] != 'Left':
+              veh_roles[line_items[5]] = 'Leader'
+          elif split_count == 0:  # The last SPLIT in MF-LEAVE / EF-LEAVE
+            if line_items[5] not in veh_roles.keys() or veh_roles[line_items[5]] != 'Left':
+              veh_roles[line_items[5]] = 'Left'
+        sender = line_items[1]
+        message.append(sender)
+        if line_items[1] not in veh_roles.keys():
+          message.append('Follower')
+        else:
+          message.append(veh_roles[line_items[1]])
+        receiver = line_items[5]
+        message.append(receiver)
+        if line_items[5] not in veh_roles.keys():
+          message.append('Follower')
+        else:
+          message.append(veh_roles[line_items[5]])
+      if len(message) != 0:
+        interaction.append(copy.deepcopy(message))
+    f.close()
+    ideals.append(copy.deepcopy(interaction))
+
 def RunFCM(IM_, oracle):
   # IM Selection (Random)
   random.shuffle(IM_)
