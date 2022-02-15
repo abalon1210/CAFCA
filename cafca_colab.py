@@ -27,6 +27,7 @@ import gc
 target_scenario = 'OP_SUCCESS_RATE'  # INPUT: OP_SUCCESS_RATE or COLLISION
 LOG_PATH = 'C:/Users/Hyun/IdeaProjects/StarPlateS/SoS_Extension/logs_full/'
 V_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA'
+IDEAL_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA/Ideal'
 print('In Log Folder : ', os.listdir(LOG_PATH))
 
 """## Interaction model generator"""
@@ -345,6 +346,8 @@ def PatternExtractor(im_pattern, im_input, d_threshold):
   # Generate the LCS table of the interaction models
   for i in range(len_ptn + 1):
     for j in range(len_input + 1):
+      if i == 0 or j == 0:
+        continue
       flag, env_sim = ESMIC(pattern[i - 1], input[j - 1], pattern_prev_msg, input_prev_msg, pattern_env, input_env,
                             d_threshold, 5, 0.8)
       if flag:  # Env State & Message Identity Checking (ESMIC) function usage example.
@@ -368,6 +371,41 @@ def PatternExtractor(im_pattern, im_input, d_threshold):
           current += 1
           if pattern[i - 1].time >= 25.0: ret.append(pattern[i - 1])  # TODO should be modified by model
     return ret, sum(env_sims) / len(env_sims)
+
+def PatternExtractorWithoutEnv(im_pattern, im_input, d_threshold):
+  pattern = im_pattern[2]
+  input = im_input[2]
+  len_ptn = len(pattern)
+  len_input = len(input)
+  LCS = [[0] * (len_input + 1) for i in range(len_ptn + 1)]
+  pattern_prev_msg = None
+  input_prev_msg = None
+
+  # Generate the LCS table of the interaction models
+  for i in range(len_ptn + 1):
+    for j in range(len_input + 1):
+      if i == 0 or j == 0:
+        continue
+      if MCT(pattern[i-1], input[j-1]) and CalMessageDelay(pattern[i - 1], input[j - 1], pattern_prev_msg, input_prev_msg, d_threshold):  # Env State & Message Identity Checking (ESMIC) function usage example.
+        LCS[i][j] = LCS[i - 1][j - 1] + 1 # Save the env_sim values when the two messages are matched.
+        if not pattern_prev_msg:  # You need to check the previously matched messages for checking the message delivery intervals of the two messages, respectively
+          pattern_prev_msg = pattern[i - 1]
+          input_prev_msg = input[j - 1]
+      else:
+        LCS[i][j] = max(LCS[i][j - 1], LCS[i - 1][j])
+
+  # Extract the LCS from the table
+  ret = []
+  if LCS[len_ptn][len_input] == 0:
+    return None
+  else:
+    current = 0
+    for i in range(1, len_ptn + 1):
+      for j in range(1, len_input + 1):
+        if LCS[i][j] > current:
+          current += 1
+          if pattern[i - 1].time >= 25.0: ret.append(pattern[i - 1])  # TODO should be modified by model
+    return ret
 
 
 def GetPattern(im_pattern, im_input, d_threshold):  # LCS pattern extraction function
@@ -892,11 +930,11 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, C_VALUE): # TODO cl_type: 
 
   return patterns, clusters
 
-def IdealPatternReader(filepath):
+def IdealPatternReader():
   ideals = []
-  for filename in os.listdir(join(V_PATH, filepath)):
+  for filename in os.listdir(IDEAL_PATH):
     interaction = []  # ======> interaction = [message0, message1, message2, ...] ordered chronologically
-    f = open(join(join(V_PATH, filepath),filename), 'r')
+    f = open(join(IDEAL_PATH,filename), 'r')
     lines = f.readlines()
     F_type = -1
     split_count = -1
@@ -911,8 +949,7 @@ def IdealPatternReader(filepath):
         split_count = 2
       elif 'EF_Leave' in line:
         split_count = 1
-      if len(
-              line_items) > 5:  # For each message items => [time, command_sent, sender, sender_role, receiver, receiver_role]
+      if len(line_items) > 5:  # For each message items => [time, command_sent, sender, sender_role, receiver, receiver_role] + weight
         time = line_items[0]
         message.append(time)
         command_sent = line_items[4]
@@ -958,10 +995,51 @@ def IdealPatternReader(filepath):
           message.append('Follower')
         else:
           message.append(veh_roles[line_items[5]])
+        if len(line_items) >= 6: # in Ideal pattern, some messages have weight
+          message.append(line_items[6])
+
       if len(message) != 0:
         interaction.append(copy.deepcopy(message))
     f.close()
     ideals.append(copy.deepcopy(interaction))
+
+def PIT(ideal_patterns, patterns, d_threshold):
+  matched = []
+  ret_PITs = []
+  for idx, id_pattern in enumerate(ideal_patterns):
+    max_PIT = -1
+    for idx, gen_pattern in enumerate(patterns):
+      if idx in matched:
+        continue
+      lcs = PatternExtractorWithoutEnv(id_pattern, gen_pattern, d_threshold)
+      if max_PIT < len(lcs) / len(id_pattern):
+        max_PIT = len(lcs) / len(id_pattern)
+        matched.append(idx)
+    ret_PITs.append(max_PIT)
+
+  return ret_PITs
+
+
+def PITW(ideal_patterns, patterns, d_threshold):
+  matched = []
+  ret_PITWs = []
+  for idx, id_pattern in enumerate(ideal_patterns):
+    max_PITW = -1
+    for idx, gen_pattern in enumerate(patterns):
+      if idx in matched:
+        continue
+      lcs = PatternExtractorWithoutEnv(id_pattern, gen_pattern, d_threshold)
+      PITW = len(lcs) / len(id_pattern)
+      for message in lcs:
+        if len(message) >= 7:
+          PITW += message[6]
+      if max_PITW < PITW:
+        max_PITW = PITW
+        matched.append(idx)
+    ret_PITWs.append(max_PITW)
+
+  return ret_PITWs
+
 
 def RunFCM(IM_, oracle):
   # IM Selection (Random)
@@ -980,6 +1058,8 @@ def RunFCM(IM_, oracle):
     if assign_flag:
       C_VALUE += 1
     oracl_batch.append(copy.deepcopy(cl_batch))
+
+  ideal_patterns = IdealPatternReader()
 
   # Run FCM with hyperparam settings
   for DELAY_THRESHOLD in range(1, 11):
