@@ -894,7 +894,21 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, C_VALUE): # TODO cl_type: 
 
 def RunFCM(IM_, oracle):
   # IM Selection (Random)
+  random.shuffle(IM_)
+  IM_Batch = IM_[0:1000]
   # C_VALUE setting codes by the randomly selelcted subset
+  C_VALUE = 0
+  oracl_batch = []
+  for cl in oracle:
+    cl_batch = []
+    assign_flag = False
+    for im in IM_Batch:
+      if im[0] in cl:
+        assign_flag = True
+        cl_batch.append(im[0])
+    if assign_flag:
+      C_VALUE += 1
+    oracl_batch.append(copy.deepcopy(cl_batch))
 
   # Run FCM with hyperparam settings
   for DELAY_THRESHOLD in range(1, 11):
