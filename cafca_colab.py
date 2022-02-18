@@ -26,7 +26,7 @@ import os
 import gc
 
 target_scenario = 'OP_SUCCESS_RATE'  # INPUT: OP_SUCCESS_RATE or COLLISION
-LOG_PATH = 'C:/Users/Hyun/IdeaProjects/StarPlateS/SoS_Extension/logs_full/'
+LOG_PATH = 'C:/Users/Hyun/IdeaProjects/StarPlateS/SoS_Extension/logs_full/oracle_temp/'
 V_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA'
 IDEAL_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA/Ideal'
 print('In Log Folder : ', os.listdir(LOG_PATH))
@@ -950,7 +950,7 @@ def IdealPatternReader():
     F_type = -1
     split_count = -1
     veh_roles = {}
-    for i in range(16, len(lines)):  # For each line in log file
+    for i in range(3, len(lines)):  # For each line in log file
       message = []
       line = lines[i]
       line = ' '.join(line.split())  # Preprocessing
@@ -1013,6 +1013,7 @@ def IdealPatternReader():
         interaction.append(copy.deepcopy(message))
     f.close()
     ideals.append(copy.deepcopy(interaction))
+  return ideals
 
 def PIT(ideal_patterns, patterns, d_threshold):
   matched = []
@@ -1256,7 +1257,7 @@ def RunFCM(IM_, oracle):
     cl_batch = []
     assign_flag = False
     for im in IM_Batch:
-      if im[0] in cl:
+      if str(im[0])+"_0" in cl:
         assign_flag = True
         cl_batch.append(im[0])
     if assign_flag:
@@ -1271,7 +1272,7 @@ def RunFCM(IM_, oracle):
   for DELAY_THRESHOLD in range(1, 11):
     for SIM_THRESHOLD in range(5, 50):
       start_time = time.time()
-      patterns, clusters = FCM(0, IM_, DELAY_THRESHOLD*0.1, SIM_THRESHOLD*0.01)
+      patterns, clusters = FCM(0, IM_, DELAY_THRESHOLD*0.1, SIM_THRESHOLD*0.01, C_VALUE)
       end_time = time.time()
 
       # Evaluate the pattern mining & clustering results
@@ -1304,8 +1305,7 @@ def main():
     line = line.replace(",,","")
     line = line.replace("\n", "")
     classification_data.append(line.split(','))
-    print(line.split(','))
-
+  print(type(classification_data[0][0]))
   # RunSPADE(FIM)
   # RunLogLiner(FIM, classification_data)
   RunFCM(FIM, classification_data)
