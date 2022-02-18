@@ -888,18 +888,28 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, C_VALUE): # TODO cl_type: 
         simvalues[j][k] = CAFCASimCal(patterns[j], IM_[k], DELAY_THRESHOLD)
         diss[j][k] = 1 - simvalues[j][k]
 
-    # Membership caluclation & clustering
-    clusters = []
+    # Membership calculation
     for j in range(C_VALUE):
-      cluster = []
-      temp = 0
       for k in range(len(IM_)):
+        temp = 0
         for i in range(C_VALUE):
           temp += math.pow(diss[j][k] / diss[i][k], 2/m-1)
         memberships[j][k] = 1 / temp
+
+    # Clustering
+    clusters = [[] for j in range(len(C_VALUE))]
+    for j in range(C_VALUE):
+      max_idx = 0
+      for k in range(len(IM_)):
+        assign_flag = False
         if memberships[j][k] > SIM_THRESHOLD: # Clustering
-          cluster.append(copy.deepcopy(IM_[k]))
-      clusters.append(copy.deepcopy(cluster))
+          clusters[j].append(copy.deepcopy(IM_[k]))
+          assign_flag = True
+        if not assign_flag:
+          for i in range(C_VALUE):
+            if memberships[i][k] > memberships[max_idx][k]:
+              max_idx = i
+          clusters[max_idx].append(IM_[k])
 
     # Pattern update
     patterns.clear()
