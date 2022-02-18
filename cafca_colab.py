@@ -1265,7 +1265,6 @@ def RunFCM(IM_, oracle):
       end_time = time.time()
 
       # Evaluate the pattern mining & clustering results
-      # PIT (+ for each class), PITW (+ for each class), F1P, time
       pit = PIT(ideal_patterns, patterns, DELAY_THRESHOLD*0.1)
       pitw = PIT(ideal_patterns, patterns, DELAY_THRESHOLD*0.1)
       f1p = EvaluateF1P(oracle_batch, IM_Batch, clusters)
@@ -1279,8 +1278,6 @@ def RunFCM(IM_, oracle):
       ret += DELAY_THRESHOLD*0.1 + ", " + SIM_THRESHOLD*0.01 + "," + sum(pit) +"," + ret_pit + sum(pitw) + "," + ret_pitw + f1p[-1] + "," + (end_time - start_time) + "\n"
   f.write(ret)
   f.close()
-  # Save the inputs, patterns, clusters, and evaluation results
-
 
 def main():
   IM, FIM = IMGenerator()
@@ -1300,7 +1297,8 @@ def main():
     print(line.split(','))
 
   # RunSPADE(FIM)
-  RunLogLiner(FIM, classification_data)
+  # RunLogLiner(FIM, classification_data)
+  RunFCM(FIM, classification_data)
 
 if __name__ == "__main__":
   main()
