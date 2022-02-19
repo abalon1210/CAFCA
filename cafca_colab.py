@@ -225,7 +225,7 @@ from numpy.linalg import norm
 # Inputs: two messages, the two previously matched messages (None, if not exist), whole Env states for checking the specific points of Env states around the messages, delay_threshold, time_window size for Env state comparison, and env_similarity threshold
 def ESMIC(msg_a, msg_b, msg_a_prev, msg_b_prev, env_a, env_b, d_threshold, time_window, env_sim_threshold):
   if not MCT(msg_a, msg_b) or not CalMessageDelay(msg_a, msg_b, msg_a_prev, msg_b_prev, d_threshold):
-    return False
+    return False, None
   env_sim = []
   for state_a in env_a:
     if float(state_a[0]) < float(msg_a[0]) - time_window or float(state_a[0]) > float(msg_a[0]) + time_window:
@@ -233,12 +233,12 @@ def ESMIC(msg_a, msg_b, msg_a_prev, msg_b_prev, env_a, env_b, d_threshold, time_
     for state_b in env_b:
       if float(state_b[0]) < float(msg_b[0]) - time_window or float(state_b[0]) > float(msg_b[0]) + time_window:
         continue
-      print(state_a[0])
-      print(state_b[0])
+      # print(state_a[0])
+      # print(state_b[0])
       env_sim.append(EnvStateCompare(state_a,state_b))
   env_sim = np.array(env_sim)
-  print(env_sim)
-  if np.max(env_sim) < env_sim_threshold: # np.mean -> np.max
+  # print(env_sim)
+  if np.nanmean(env_sim) < env_sim_threshold:
     return False, np.max(env_sim)
   return True, np.max(env_sim)
 
@@ -255,8 +255,8 @@ def CalMessageDelay(msg_a, msg_b, msg_a_prev, msg_b_prev, d_threshold): # Check 
 def EnvStateCompare(state_a, state_b): # Compare the identity of the two Env states => [time, veh1, veh1_lane, veh1_loc, veh2, veh2_lane, veh2_loc, ...]
   veh_a = EnvStatePreprocess(state_a)
   veh_b = EnvStatePreprocess(state_b)
-  print(veh_a)
-  print(veh_b)
+  # print(veh_a)
+  # print(veh_b)
   sim_values = []
   for distance_a in veh_a:
     base = np.array(distance_a)
@@ -268,8 +268,8 @@ def EnvStateCompare(state_a, state_b): # Compare the identity of the two Env sta
       else:
         for i in range(0,len(distance_b)-len(base)+1):
           sim_values.append(cos_sim(base, np.array(distance_b[i:i+len(base)])))
-  print(sim_values)
-  return np.nanmax(sim_values)
+  # print(sim_values)
+  return float(np.nanmax(sim_values))
 
 def cos_sim(A, B):
   return dot(A, B)/(norm(A)*norm(B))
@@ -296,25 +296,25 @@ def vehDistanceGeneration(dic_state, id):
     if lane == dic_state[id][0]:
       veh_location.append(float(loc))
     veh_location.sort(reverse=True)
-  print(veh_location)
+  # print(veh_location)
   veh_distance = []
   for i in range(0, len(veh_location)-1):
     veh_distance.append(Quantification(float(veh_location[i]) - float(veh_location[i+1])))
   return veh_distance
 
-def Quantification(distance): # 2: Very far / 1: Far / 0 : Appropriate / -1 : Close / -2 : Very close
+def Quantification(distance): # 5: Very far / 4: Far / 3: Appropriate / 2: Close / 1: Very close
   inter_gap = 105
   intra_gap = 16.5
   if distance > 2.5 * inter_gap:
-    return 2
+    return 5
   elif distance > 1.25 * inter_gap:
-    return 1
+    return 4
   elif distance > intra_gap:
-    return 0
+    return 3
   elif distance > 0.5 * intra_gap:
-    return -1
+    return 2
   else:
-    return -2
+    return 1
 
 #print(ESMIC(IM_[1][2][18], IM_[1][2][18], None, None, IM_[1][3], IM_[1][3], 1.0, 5, 0.8))
 # print(IM_[1][3][0])
@@ -326,11 +326,11 @@ def Quantification(distance): # 2: Very far / 1: Far / 0 : Appropriate / -1 : Cl
 # Inputs: two models (pattern and input), d_threshold
 # Outputs: The most critical LCS among possible LCS generation sets, the LCS similarity value with the pattern and input models.
 def CAFCASimCal(im_pattern, im_input, d_threshold):
-  p = 0.5
+  p = 1.0 # 0.5
   q = 0.5
-  generated_pattern, avg_env_sim = GetPattern(im_pattern, im_input, d_threshold)
-  return p * (len(generated_pattern[2]) / len(im_pattern) * len(im_input)) + q * avg_env_sim
-
+  # generated_pattern, avg_env_sim = GetPattern(im_pattern, im_input, d_threshold)
+  generated_pattern, avg_env_sim = GetPatternWithoutEnv(im_pattern, im_input, d_threshold)
+  return p * (len(generated_pattern[2]) / (len(im_pattern[2]) * len(im_input[2]))) + q * avg_env_sim
 
 def PatternExtractor(im_pattern, im_input, d_threshold):
   pattern = im_pattern[2]
@@ -349,28 +349,29 @@ def PatternExtractor(im_pattern, im_input, d_threshold):
     for j in range(len_input + 1):
       if i == 0 or j == 0:
         continue
-      flag, env_sim = ESMIC(pattern[i - 1], input[j - 1], pattern_prev_msg, input_prev_msg, pattern_env, input_env,
-                            d_threshold, 5, 0.8)
+      if float(pattern[i-1][0]) < 25.0 or float(input[j-1][0]) < 25.0:
+        continue
+      flag, env_sim = ESMIC(pattern[i - 1], input[j - 1], pattern_prev_msg, input_prev_msg, pattern_env, input_env, d_threshold, 2, 0.8)
       if flag:  # Env State & Message Identity Checking (ESMIC) function usage example.
         LCS[i][j] = LCS[i - 1][j - 1] + 1
         env_sims.append(env_sim)  # Save the env_sim values when the two messages are matched.
-        if not pattern_prev_msg:  # You need to check the previously matched messages for checking the message delivery intervals of the two messages, respectively
-          pattern_prev_msg = pattern[i - 1]
-          input_prev_msg = input[j - 1]
+        # You need to check the previously matched messages for checking the message delivery intervals of the two messages, respectively
+        pattern_prev_msg = pattern[i - 1]
+        input_prev_msg = input[j - 1]
       else:
         LCS[i][j] = max(LCS[i][j - 1], LCS[i - 1][j])
 
   # Extract the LCS from the table
   ret = []
   if LCS[len_ptn][len_input] == 0:
-    return None
+    return None, None
   else:
     current = 0
     for i in range(1, len_ptn + 1):
       for j in range(1, len_input + 1):
         if LCS[i][j] > current:
           current += 1
-          if pattern[i - 1].time >= 25.0: ret.append(pattern[i - 1])  # TODO should be modified by model
+          ret.append(pattern[i - 1])
     return ret, sum(env_sims) / len(env_sims)
 
 def PatternExtractorWithoutEnv(im_pattern, im_input, d_threshold):
@@ -387,11 +388,13 @@ def PatternExtractorWithoutEnv(im_pattern, im_input, d_threshold):
     for j in range(len_input + 1):
       if i == 0 or j == 0:
         continue
+      if float(pattern[i-1][0]) < 25.0 or float(input[j-1][0]) < 25.0:
+        continue
       if MCT(pattern[i-1], input[j-1]) and CalMessageDelay(pattern[i - 1], input[j - 1], pattern_prev_msg, input_prev_msg, d_threshold):  # Env State & Message Identity Checking (ESMIC) function usage example.
         LCS[i][j] = LCS[i - 1][j - 1] + 1 # Save the env_sim values when the two messages are matched.
-        if not pattern_prev_msg:  # You need to check the previously matched messages for checking the message delivery intervals of the two messages, respectively
-          pattern_prev_msg = pattern[i - 1]
-          input_prev_msg = input[j - 1]
+        # You need to check the previously matched messages for checking the message delivery intervals of the two messages, respectively
+        pattern_prev_msg = pattern[i - 1]
+        input_prev_msg = input[j - 1]
       else:
         LCS[i][j] = max(LCS[i][j - 1], LCS[i - 1][j])
 
@@ -405,9 +408,8 @@ def PatternExtractorWithoutEnv(im_pattern, im_input, d_threshold):
       for j in range(1, len_input + 1):
         if LCS[i][j] > current:
           current += 1
-          if pattern[i - 1].time >= 25.0: ret.append(pattern[i - 1])  # TODO should be modified by model
+          ret.append(pattern[i - 1])  # TODO should be modified by model
     return ret
-
 
 def GetPattern(im_pattern, im_input, d_threshold):  # LCS pattern extraction function
   if im_pattern == None:
@@ -417,8 +419,7 @@ def GetPattern(im_pattern, im_input, d_threshold):  # LCS pattern extraction fun
   ret = []  # returned pattern with the structure of im.
   T = [0, 25, 45, 65, 85]
   for t in T:
-    generated_pattern, avg_env_sim = PatternExtractor(InteractionSeqSlicer(im_pattern, t),
-                                                      InteractionSeqSlicer(im_input, t), d_threshold)
+    generated_pattern, avg_env_sim = PatternExtractor(InteractionSeqSlicer(im_pattern, t), InteractionSeqSlicer(im_input, t), d_threshold)
     generated_lcs.append(generated_pattern)
     generated_avg_env_sim.append(avg_env_sim)
   max_LCS, max_avg_env_sim = GetMaxContentLCS(generated_lcs, generated_avg_env_sim)
@@ -428,29 +429,65 @@ def GetPattern(im_pattern, im_input, d_threshold):  # LCS pattern extraction fun
   ret.append(copy.deepcopy(im_pattern[3]))
   return ret, max_avg_env_sim
 
+def GetPatternWithoutEnv(im_pattern, im_input, d_threshold):
+  if im_pattern == None:
+    return im_input
+  generated_lcs = []
+  ret = []  # returned pattern with the structure of im.
+  T = [0, 25, 45, 65, 85]
+  for t in T:
+    # generated_pattern, avg_env_sim = PatternExtractor(InteractionSeqSlicer(im_pattern, t), InteractionSeqSlicer(im_input, t), d_threshold)
+    generated_pattern= PatternExtractorWithoutEnv(InteractionSeqSlicer(im_pattern, t),
+                                                                InteractionSeqSlicer(im_input, t), d_threshold)
+    generated_lcs.append(generated_pattern)
+  max_LCS, max_avg_env_sim = GetMaxContentLCS(generated_lcs, None)
+  ret.append(copy.deepcopy(im_pattern[0]))
+  ret.append(copy.deepcopy(im_pattern[1]))
+  ret.append(copy.deepcopy(max_LCS))
+  ret.append(copy.deepcopy(im_pattern[3]))
+  return ret, 0
 
 def GetMaxContentLCS(generated_lcs, generated_avg_env_sim):  # GetMaxContentLCS among the generated LCSs
   ret_max = None
   ret_max_env = None
   max_contents = -1
   max_len = -1
-  for idx, lcs_pattern in enumerate(generated_lcs):
-    contents = set()
-    for message in lcs_pattern:
-      contents.add(message[1])
-    if len(contents) > max_contents:  # Compare the number of types of contents in LCS pattern
-      max_contents = len(contents)
-      ret_max = lcs_pattern
-      ret_max_env = generated_avg_env_sim[idx]
-      max_len = len(lcs_pattern)
-    elif len(contents) == max_contents:  # If the number of content-types are same, select the shorter one.
-      if max_len > len(lcs_pattern):
+  if generated_avg_env_sim:
+    for idx, lcs_pattern in enumerate(generated_lcs):
+      if not lcs_pattern:
+        continue
+      contents = set()
+      for message in lcs_pattern:
+        contents.add(message[1])
+      if len(contents) > max_contents:  # Compare the number of types of contents in LCS pattern
         max_contents = len(contents)
         ret_max = lcs_pattern
         ret_max_env = generated_avg_env_sim[idx]
         max_len = len(lcs_pattern)
-  return ret_max, ret_max_env
-
+      elif len(contents) == max_contents:  # If the number of content-types are same, select the shorter one.
+        if max_len > len(lcs_pattern):
+          max_contents = len(contents)
+          ret_max = lcs_pattern
+          ret_max_env = generated_avg_env_sim[idx]
+          max_len = len(lcs_pattern)
+    return ret_max, ret_max_env
+  else:
+    for idx, lcs_pattern in enumerate(generated_lcs):
+      if not lcs_pattern:
+        continue
+      contents = set()
+      for message in lcs_pattern:
+        contents.add(message[1])
+      if len(contents) > max_contents:  # Compare the number of types of contents in LCS pattern
+        max_contents = len(contents)
+        ret_max = lcs_pattern
+        max_len = len(lcs_pattern)
+      elif len(contents) == max_contents:  # If the number of content-types are same, select the shorter one.
+        if max_len > len(lcs_pattern):
+          max_contents = len(contents)
+          ret_max = lcs_pattern
+          max_len = len(lcs_pattern)
+    return ret_max, None
 
 def InteractionSeqSlicer(im,time):  # Only slice the message sequences by the time TODO: If necessary, cover Env slicing too?
   ret = copy.deepcopy(im)
@@ -855,7 +892,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, C_VALUE): # TODO cl_type: 
 
   simvalues = [[random.randrange(0,1) for i in range(len(IM_))] for j in range(C_VALUE)]
   memberships = [[random.randrange(0,1) for i in range(len(IM_))] for j in range(C_VALUE)]
-  diss = [[random.randrange(0,1) for i in range(len(IM_))] for j in range(len(C_VALUE))]
+  diss = [[random.randrange(0,1) for i in range(len(IM_))] for j in range(C_VALUE)]
   iterations = 0
 
   while True: # Initial selection of C models from the whole models
@@ -863,7 +900,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, C_VALUE): # TODO cl_type: 
     patterns = []
     max_flag = True
     for i in range(0, C_VALUE): # Select C numbers of models
-      item = IM_[random.randint(0,len(IM_))]
+      item = IM_[random.randint(0,len(IM_)-1)]
       if item not in patterns:
         patterns.append(item)
     for i in range(0, len(patterns)):
@@ -1305,7 +1342,6 @@ def main():
     line = line.replace(",,","")
     line = line.replace("\n", "")
     classification_data.append(line.split(','))
-  print(type(classification_data[0][0]))
   # RunSPADE(FIM)
   # RunLogLiner(FIM, classification_data)
   RunFCM(FIM, classification_data)
