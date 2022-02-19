@@ -330,7 +330,8 @@ def CAFCASimCal(im_pattern, im_input, d_threshold):
   q = 0.5
   # generated_pattern, avg_env_sim = GetPattern(im_pattern, im_input, d_threshold)
   generated_pattern, avg_env_sim = GetPatternWithoutEnv(im_pattern, im_input, d_threshold)
-  return p * (len(generated_pattern[2]) / (len(im_pattern[2]) * len(im_input[2]))) + q * avg_env_sim
+  # return p * (len(generated_pattern[2]) / (len(im_pattern[2]) * len(im_input[2]))) + q * avg_env_sim
+  return p * (len(generated_pattern[2]) / len(im_pattern[2])) + q * avg_env_sim
 
 def PatternExtractor(im_pattern, im_input, d_threshold):
   pattern = im_pattern[2]
@@ -884,8 +885,8 @@ import random
 import math
 
 def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, C_VALUE): # TODO cl_type: FCM, PFS (Picture Fuzzy Set), KS2M
-  INIT_SIM_THRESHOLD = 0.6
-  MAX_INIT_SIM_THRESHOLD = 0.8
+  INIT_SIM_THRESHOLD = 0.4
+  MAX_INIT_SIM_THRESHOLD = 0.6
   SENSITIVITY_THRESHOLD = 0.3
   MAX_ITERATION = 10000
   m = 2 # Fuzzy value
