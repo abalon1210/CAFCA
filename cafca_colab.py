@@ -26,7 +26,7 @@ import os
 import gc
 
 target_scenario = 'OP_SUCCESS_RATE'  # INPUT: OP_SUCCESS_RATE or COLLISION
-LOG_PATH = 'C:/Users/Hyun/IdeaProjects/StarPlateS/SoS_Extension/logs_full/oracle_temp/'
+LOG_PATH = 'C:/Users/Hyun/IdeaProjects/StarPlateS/SoS_Extension/logs_full/'
 V_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA'
 IDEAL_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA/Ideal'
 print('In Log Folder : ', os.listdir(LOG_PATH))
@@ -1394,15 +1394,15 @@ def RunFCM(IM_, oracle):
   ret = ""
   # Run FCM with hyperparam settings
   # for DELAY_THRESHOLD in range(1, 11):
-  # start_time = time.time()
-  # patterns, clusters = FCM(0, IM_, 0.1, 1/C_VALUE, 10, C_VALUE)
-  # end_time = time.time()
+  start_time = time.time()
+  patterns, clusters = FCM(0, IM_, 0.1, 1/C_VALUE, 10, C_VALUE)
+  end_time = time.time()
 
   # Evaluate the pattern mining & clustering results
-  pit = PIT(ideal_patterns, ideal_patterns, 0.5, 10)
-  pitw = PITW(ideal_patterns, ideal_patterns, 0.5, 10)
-  f1p = EvaluateF1P(oracle_batch, IM_Index, IM_Batch) #clusters)
-  # print(0.5 + ", " +  1/C_VALUE + ": " +sum(pit) +"," + sum(pitw) + "," + f1p[-1] + "," + (end_time - start_time))
+  pit = PIT(ideal_patterns, patterns, 0.5, 10)
+  pitw = PITW(ideal_patterns, patterns, 0.5, 10)
+  f1p = EvaluateF1P(oracle_batch, IM_Index, clusters)
+  print(0.5 + ", " +  1/C_VALUE + ": " +sum(pit) +"," + sum(pitw) + "," + f1p[-1] + "," + (end_time - start_time))
   ret_pit = ""
   for val in pit:
     ret_pit += val + ","
