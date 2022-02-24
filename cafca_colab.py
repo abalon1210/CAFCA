@@ -23,10 +23,14 @@ Abstract the observable environmental sensing data & communication traces from t
 """
 import copy
 import os
-import gc
+import numpy as np
+from numpy import dot
+from numpy.linalg import norm
+import torch
+
 
 target_scenario = 'OP_SUCCESS_RATE'  # INPUT: OP_SUCCESS_RATE or COLLISION
-LOG_PATH = 'C:/Users/Hyun/IdeaProjects/StarPlateS/SoS_Extension/logs_full/oracle_temp/'
+LOG_PATH = 'C:/Users/Hyun/IdeaProjects/StarPlateS/SoS_Extension/logs_full/sample/'
 V_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA'
 IDEAL_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA/Ideal'
 print('In Log Folder : ', os.listdir(LOG_PATH))
@@ -224,11 +228,6 @@ Overlapping clustering approach is applied.
 
 ## Environmental state & message identity checker
 """
-
-import numpy as np
-from numpy import dot
-from numpy.linalg import norm
-
 # The function you need to call when you try to check the identity of messages with environmental states.
 # Inputs: two messages, the two previously matched messages (None, if not exist), whole Env states for checking the specific points of Env states around the messages, delay_threshold, time_window size for Env state comparison, and env_similarity threshold
 def ESMIC(msg_a, msg_b, msg_a_prev, msg_b_prev, env_a, env_b, d_threshold, time_window, env_sim_threshold):
@@ -350,7 +349,8 @@ def PatternExtractor(im_pattern, im_input, d_threshold):
   input_env = im_input[3]
   len_ptn = len(pattern)
   len_input = len(input)
-  LCS = [[0] * (len_input + 1) for i in range(len_ptn + 1)]
+  # LCS = [[0] * (len_input + 1) for i in range(len_ptn + 1)]
+  LCS = np.zeros((len_ptn+1, len_input+1))
   pattern_prev_msg = None
   input_prev_msg = None
   env_sims = []
@@ -384,11 +384,14 @@ def PatternExtractor(im_pattern, im_input, d_threshold):
     return ret, sum(env_sims) / len(env_sims)
 
 def PatternExtractorWithoutEnv(im_pattern, im_input, d_threshold):
+  if im_pattern is None or im_input is None:
+    return None
   pattern = im_pattern[2]
   input = im_input[2]
   len_ptn = len(pattern)
   len_input = len(input)
-  LCS = [[0] * (len_input + 1) for i in range(len_ptn + 1)]
+  # LCS = [[0] * (len_input + 1) for i in range(len_ptn + 1)]
+  LCS = np.zeros((len_ptn+1, len_input+1))
   pattern_prev_msg = None
   input_prev_msg = None
 
@@ -434,10 +437,10 @@ def GetPattern(im_pattern, im_input, d_threshold, min_len_threshold):  # LCS pat
   max_LCS, max_avg_env_sim = GetMaxContentLCS(generated_lcs, generated_avg_env_sim)
   if not max_LCS or len(max_LCS) < min_len_threshold:
     max_LCS = im_pattern[2]
-  ret.append(copy.deepcopy(im_pattern[0]))
-  ret.append(copy.deepcopy(im_pattern[1]))
-  ret.append(copy.deepcopy(max_LCS))
-  ret.append(copy.deepcopy(im_pattern[3]))
+  ret.append(im_pattern[0])
+  ret.append(im_pattern[1])
+  ret.append(max_LCS)
+  ret.append(im_pattern[3])
   return ret
 
 def GetPatternSim(im_pattern, im_input, d_threshold):  # LCS pattern extraction function
@@ -453,10 +456,10 @@ def GetPatternSim(im_pattern, im_input, d_threshold):  # LCS pattern extraction 
       generated_lcs.append(generated_pattern)
       generated_avg_env_sim.append(avg_env_sim)
   max_LCS, max_avg_env_sim = GetMaxContentLCS(generated_lcs, generated_avg_env_sim)
-  ret.append(copy.deepcopy(im_pattern[0]))
-  ret.append(copy.deepcopy(im_pattern[1]))
-  ret.append(copy.deepcopy(max_LCS))
-  ret.append(copy.deepcopy(im_pattern[3]))
+  ret.append(im_pattern[0])
+  ret.append(im_pattern[1])
+  ret.append(max_LCS)
+  ret.append(im_pattern[3])
   return ret, max_avg_env_sim
 
 def GetPatternWithoutEnv(im_pattern, im_input, d_threshold, min_len_threshold):
@@ -478,30 +481,30 @@ def GetPatternWithoutEnv(im_pattern, im_input, d_threshold, min_len_threshold):
   max_LCS, max_avg_env_sim = GetMaxContentLCS(generated_lcs, None)
   if not max_LCS or len(max_LCS) < min_len_threshold:
     max_LCS = im_pattern[2]
-  ret.append(copy.deepcopy(im_pattern[0]))
-  ret.append(copy.deepcopy(im_pattern[1]))
-  ret.append(copy.deepcopy(max_LCS))
-  ret.append(copy.deepcopy(im_pattern[3]))
+  ret.append(im_pattern[0])
+  ret.append(im_pattern[1])
+  ret.append(max_LCS)
+  ret.append([])
   return ret
 
 def GetPatternSimWithoutEnv(im_pattern, im_input, d_threshold):
-  if im_pattern == None:
+  if im_pattern is None:
     return im_input
   generated_lcs = []
   ret = [] # returned pattern with the structure of im.
   T = [25, 45, 65, 85]
   for t in T:
-    generated_pattern= PatternExtractorWithoutEnv(InteractionSeqSlicer(im_pattern, t),InteractionSeqSlicer(im_input, t), d_threshold)
+    generated_pattern= PatternExtractorWithoutEnv(im_pattern, InteractionSeqSlicer(im_input, t), d_threshold)
     generated_lcs.append(generated_pattern)
     # for t_ in T:
     #   # generated_pattern, avg_env_sim = PatternExtractor(InteractionSeqSlicer(im_pattern, t), InteractionSeqSlicer(im_input, t), d_threshold)
     #   generated_pattern= PatternExtractorWithoutEnv(InteractionSeqSlicer(im_pattern, t),InteractionSeqSlicer(im_input, t_), d_threshold)
     #   generated_lcs.append(generated_pattern)
   max_LCS, max_avg_env_sim = GetMaxContentLCS(generated_lcs, None)
-  ret.append(copy.deepcopy(im_pattern[0]))
-  ret.append(copy.deepcopy(im_pattern[1]))
-  ret.append(copy.deepcopy(max_LCS))
-  ret.append(copy.deepcopy(im_pattern[3]))
+  ret.append(im_pattern[0])
+  ret.append(im_pattern[1])
+  ret.append(max_LCS)
+  ret.append([])
   return ret, 0
 
 def GetMaxContentLCS(generated_lcs, generated_avg_env_sim):  # GetMaxContentLCS among the generated LCSs
@@ -550,11 +553,12 @@ def GetMaxContentLCS(generated_lcs, generated_avg_env_sim):  # GetMaxContentLCS 
 
 def InteractionSeqSlicer(im,time):  # Only slice the message sequences by the time TODO: If necessary, cover Env slicing too?
   ret = copy.deepcopy(im)
-  ret_interaction = []
-  for message in im[2]:
+  ret_interaction = None
+  for idx, message in enumerate(im[2]):
     if float(message[0]) >= time:
-      ret_interaction.append(copy.deepcopy(message))
-  ret[2] = copy.deepcopy(ret_interaction)
+      ret_interaction = im[2][idx:]
+      break
+  ret[2] = ret_interaction
   return ret
 
 """### SPADE Pattern Mining
@@ -949,19 +953,26 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
   MAX_ITERATION = 10000
   m = 2 # Fuzzy value
 
-  simvalues = [[random.randrange(0,1) for i in range(len(IM_))] for j in range(C_VALUE)]
-  memberships = [[random.randrange(0,1) for i in range(len(IM_))] for j in range(C_VALUE)]
-  diss = [[random.randrange(0,1) for i in range(len(IM_))] for j in range(C_VALUE)]
+  # simvalues = [[random.randrange(0,1) for i in range(len(IM_))] for j in range(C_VALUE)]
+  # memberships = [[random.randrange(0,1) for i in range(len(IM_))] for j in range(C_VALUE)]
+  # diss = [[random.randrange(0,1) for i in range(len(IM_))] for j in range(C_VALUE)]
+  simvalues = np.zeros((C_VALUE, len(IM_)))
+  memberships = np.zeros((C_VALUE, len(IM_)))
+  diss = np.zeros((C_VALUE, len(IM_)))
   iterations = 0
 
   while True: # Initial selection of C models from the whole models
     initial_sims = []
-    patterns = []
     max_flag = True
-    while len(patterns) < C_VALUE: # Select C numbers of models
-      item = IM_[random.randint(0,len(IM_)-1)]
-      if item not in patterns:
-        patterns.append(item)
+    patterns = []
+    # while len(patterns) < C_VALUE: # Select C numbers of models
+    #   item = IM_[random.randint(0,len(IM_)-1)]
+    #   if (item not in patterns).any():
+    #     patterns.append(item)
+    index = np.random.choice(IM_.shape[0], C_VALUE, replace=False)
+    for id in index:
+      patterns.append(IM_[id-1])
+    patterns = np.array(patterns)
     for i in range(0, len(patterns)):
       for j in range(i+1, len(patterns)):
         init_sim_value = CAFCASimCal(patterns[i], patterns[j], DELAY_THRESHOLD) # Calculate the LCS_Sim values for each combination of initally selected models
@@ -987,7 +998,8 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
     for j in range(C_VALUE):
       for k in range(len(IM_)):
         simvalues[j][k] = CAFCASimCal(patterns[j], IM_[k], DELAY_THRESHOLD)
-        diss[j][k] = 1 - simvalues[j][k]
+        # diss[j][k] = 1 - simvalues[j][k]
+    diss = 1 - simvalues
 
     # Membership calculation
     for j in range(C_VALUE):
@@ -1010,7 +1022,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
       for j in range(C_VALUE):
         if memberships[j][k] > SIM_THRESHOLD: # Clustering
           if not IM_[k] in clusters[j]:
-            clusters[j].append(copy.deepcopy(IM_[k]))
+            clusters[j].append(IM_[k])
             assign_flag = True
       if not assign_flag:
         for i in range(C_VALUE):
@@ -1026,7 +1038,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
       for i in range(len(clusters[j])):
         # pattern = GetPattern(pattern, clusters[j][i], DELAY_THRESHOLD, MIN_LEN_THRESHOLD)
         pattern = GetPatternWithoutEnv(pattern, clusters[j][i], DELAY_THRESHOLD, MIN_LEN_THRESHOLD)
-      patterns.append(copy.deepcopy(pattern))
+      patterns.append(pattern)
 
     # Objective value calculation -> Basic FCM version
     objs = 0
@@ -1127,7 +1139,7 @@ def IdealPatternReader():
     pattern.append(copy.deepcopy(interaction))
     pattern.append([])
     ideals.append(copy.deepcopy(pattern))
-  return ideals
+  return np.array(ideals)
 
 def PIT(ideal_patterns, patterns, d_threshold, min_len_threshold):
   matched = []
@@ -1369,8 +1381,9 @@ def EvaluateF1P(oracle,index,cluster): #oracle: [[str]], index: [str], cluster: 
 
 def RunFCM(IM_, oracle):
   # IM Selection (Random)
-  random.shuffle(IM_)
-  IM_Batch = IM_[0:1000]
+  nIM_ = np.array(IM_)
+  np.random.shuffle(nIM_)
+  IM_Batch = nIM_[0:1000]
   IM_Index = []
   for im in IM_Batch:
     IM_Index.append(im[0])
@@ -1395,7 +1408,7 @@ def RunFCM(IM_, oracle):
   # Run FCM with hyperparam settings
   # for DELAY_THRESHOLD in range(1, 11):
   start_time = time.time()
-  patterns, clusters = FCM(0, IM_, 0.1, 1/C_VALUE, 10, C_VALUE)
+  patterns, clusters = FCM(0, IM_Batch, 0.1, 1/C_VALUE, 10, C_VALUE)
   end_time = time.time()
 
   # Evaluate the pattern mining & clustering results
