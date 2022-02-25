@@ -250,6 +250,8 @@ def ESMIC(msg_a, msg_b, msg_a_prev, msg_b_prev, env_a, env_b, d_threshold, time_
   return True, np.max(env_sim)
 
 def MCT(msg_a, msg_b): # Compare the identity of the two messages => [time, command_sent, sender, sender_role, receiver, receiver_role]
+  if (msg_a[1] == "ACK" and msg_b[1] == "ACK") or (msg_a[1] == "CHANGE_PL" and msg_b[1] == "CHANGE_PL"):
+    return msg_a[1] == msg_b[1] and msg_a[2] == msg_b[2] and msg_a[4] == msg_b[4] and msg_a[3] == msg_b[3] and msg_a[5] == msg_b[5]
   return msg_a[1] == msg_b[1] and msg_a[3] == msg_b[3] and msg_a[5] == msg_b[5]
 
 def CalMessageDelay(msg_a, msg_b, msg_a_prev, msg_b_prev, d_threshold): # Check the delivery intervals of the two messages
@@ -384,7 +386,7 @@ def PatternExtractor(im_pattern, im_input, d_threshold):
     return ret, sum(env_sims) / len(env_sims)
 
 def PatternExtractorWithoutEnv(im_pattern, im_input, d_threshold):
-  if im_pattern is None or im_input is None:
+  if im_pattern is None or im_input is None or im_pattern[2] is None or im_input[2] is None:
     return None
   pattern = im_pattern[2]
   input = im_input[2]
@@ -422,7 +424,7 @@ def PatternExtractorWithoutEnv(im_pattern, im_input, d_threshold):
     return ret
 
 def GetPattern(im_pattern, im_input, d_threshold, min_len_threshold):  # LCS pattern extraction function
-  if im_pattern == None:
+  if im_pattern is None:
     return im_input
   generated_lcs = []
   generated_avg_env_sim = []
@@ -444,7 +446,7 @@ def GetPattern(im_pattern, im_input, d_threshold, min_len_threshold):  # LCS pat
   return ret
 
 def GetPatternSim(im_pattern, im_input, d_threshold):  # LCS pattern extraction function
-  if im_pattern == None:
+  if im_pattern is None:
     return im_input
   generated_lcs = []
   generated_avg_env_sim = []
@@ -463,7 +465,7 @@ def GetPatternSim(im_pattern, im_input, d_threshold):  # LCS pattern extraction 
   return ret, max_avg_env_sim
 
 def GetPatternWithoutEnv(im_pattern, im_input, d_threshold, min_len_threshold):
-  if im_pattern == None:
+  if im_pattern is None:
     return im_input
   generated_lcs = []
   ret = []  # returned pattern with the structure of im.
@@ -950,7 +952,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
   INIT_SIM_THRESHOLD = 0.4
   MAX_INIT_SIM_THRESHOLD = 0.6
   SENSITIVITY_THRESHOLD = 0.3
-  MAX_ITERATION = 10000
+  MAX_ITERATION = 100
   m = 2 # Fuzzy value
 
   # simvalues = [[random.randrange(0,1) for i in range(len(IM_))] for j in range(C_VALUE)]
@@ -991,7 +993,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
   while iterations < MAX_ITERATION:
     # If Patterns have None object, replace it to random im.
     for i in range(len(patterns)):
-      if not patterns[i]:
+      if patterns[i] is None:
         patterns[i] = IM_[random.randint(0,len(IM_)-1)]
 
     # Similarity & Dissimilarity value calculation between patterns and models
@@ -1021,7 +1023,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
       assign_flag = False
       for j in range(C_VALUE):
         if memberships[j][k] > SIM_THRESHOLD: # Clustering
-          if not IM_[k] in clusters[j]:
+          if np.all(IM_[k] == clusters[j]):
             clusters[j].append(IM_[k])
             assign_flag = True
       if not assign_flag:
@@ -1031,14 +1033,14 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
         clusters[max_idx].append(IM_[k])
 
     # Pattern update
-    patterns.clear()
+    patterns.fill(None)
     for j in range(C_VALUE):
       pattern = None
       random.shuffle(clusters[j]) # To make variation for the generated patterns
       for i in range(len(clusters[j])):
         # pattern = GetPattern(pattern, clusters[j][i], DELAY_THRESHOLD, MIN_LEN_THRESHOLD)
         pattern = GetPatternWithoutEnv(pattern, clusters[j][i], DELAY_THRESHOLD, MIN_LEN_THRESHOLD)
-      patterns.append(pattern)
+      patterns[j] = pattern
 
     # Objective value calculation -> Basic FCM version
     objs = 0
@@ -1408,12 +1410,12 @@ def RunFCM(IM_, oracle):
   # Run FCM with hyperparam settings
   # for DELAY_THRESHOLD in range(1, 11):
   start_time = time.time()
-  patterns, clusters = FCM(0, IM_Batch, 0.1, 1/C_VALUE, 10, C_VALUE)
+  patterns, clusters = FCM(0, IM_Batch, 0.05, 1/C_VALUE, 10, C_VALUE)
   end_time = time.time()
 
   # Evaluate the pattern mining & clustering results
-  pit = PIT(ideal_patterns, patterns, 0.5, 10)
-  pitw = PITW(ideal_patterns, patterns, 0.5, 10)
+  pit = PIT(ideal_patterns, patterns, 0.05, 10)
+  pitw = PITW(ideal_patterns, patterns, 0.05, 10)
   f1p = EvaluateF1P(oracle_batch, IM_Index, clusters)
   print(0.5 + ", " +  1/C_VALUE + ": " +sum(pit) +"," + sum(pitw) + "," + f1p[-1] + "," + (end_time - start_time))
   ret_pit = ""
