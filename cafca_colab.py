@@ -1068,7 +1068,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
     pit = PIT(ideal_patterns, patterns, 0.05, 10)
     pitw = PITW(ideal_patterns, patterns, 0.05, 10)
     f1p = EvaluateF1P(oracle_batch, IM_Index, clusters)
-    print(str(0.5) + ", " + str(1 / C_VALUE) + ", " + str(iterations) + ", " + str(objs) + ": " + str(sum(pit)) + "," + str(sum(pitw)) + "," + str(f1p[-1]) + "," + str((end_time - start_time)))
+    print(str(0.05) + ", " + str(1 / C_VALUE) + ", " + str(iterations) + ", " + str(objs) + ": " + str(sum(pit)) + "," + str(sum(pitw)) + "," + str(f1p[-1]) + "," + str((end_time - start_time)))
 
     ret = ""
     ret_pit = ""
@@ -1077,7 +1077,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
     ret_pitw = ""
     for val in pitw:
       ret_pitw += str(val) + ","
-    ret += str(0.5) + ", " + str(1 / C_VALUE) + ", " + str(iterations) + ", " + str(objs) + "," + str(sum(pit)) + "," + ret_pit + str(sum(pitw)) + "," + ret_pitw + str(f1p[-1]) + "," + (
+    ret += str(0.05) + ", " + str(1 / C_VALUE) + ", " + str(iterations) + ", " + str(objs) + "," + str(sum(pit)) + "," + ret_pit + str(sum(pitw)) + "," + ret_pitw + str(f1p[-1]) + "," + (
               str(end_time - start_time)) + "\n"
     f.write(ret)
 
@@ -1432,26 +1432,26 @@ def RunFCM(IM_, oracle):
 
   # Run FCM with hyperparam settings
   # for DELAY_THRESHOLD in range(1, 11):
-  start_time = time.time()
+  # start_time = time.time()
   patterns, clusters = FCM(0, IM_Batch, 0.05, 1/C_VALUE, 10, C_VALUE, ideal_patterns, oracle_batch, IM_Index)
-  end_time = time.time()
+  # end_time = time.time()
 
   # Evaluate the pattern mining & clustering results
-  pit = PIT(ideal_patterns, patterns, 0.05, 10)
-  pitw = PITW(ideal_patterns, patterns, 0.05, 10)
-  f1p = EvaluateF1P(oracle_batch, IM_Index, clusters)
-  print(0.5 + ", " +  1/C_VALUE + ": " +sum(pit) +"," + sum(pitw) + "," + f1p[-1] + "," + (end_time - start_time))
-  f = open(join(V_PATH, "FCM_0.csv"), 'w')
-  ret = ""
-  ret_pit = ""
-  for val in pit:
-    ret_pit += val + ","
-  ret_pitw = ""
-  for val in pitw:
-    ret_pitw += val + ","
-  ret += 0.5 + ", " +  1/C_VALUE + "," + sum(pit) +"," + ret_pit + sum(pitw) + "," + ret_pitw + f1p[-1] + "," + (end_time - start_time) + "\n"
-  f.write(ret)
-  f.close()
+  # pit = PIT(ideal_patterns, patterns, 0.05, 10)
+  # pitw = PITW(ideal_patterns, patterns, 0.05, 10)
+  # f1p = EvaluateF1P(oracle_batch, IM_Index, clusters)
+  # print(0.5 + ", " +  1/C_VALUE + ": " +sum(pit) +"," + sum(pitw) + "," + f1p[-1] + "," + (end_time - start_time))
+  # f = open(join(V_PATH, "FCM_0.csv"), 'w')
+  # ret = ""
+  # ret_pit = ""
+  # for val in pit:
+  #   ret_pit += val + ","
+  # ret_pitw = ""
+  # for val in pitw:
+  #   ret_pitw += val + ","
+  # ret += 0.5 + ", " +  1/C_VALUE + "," + sum(pit) +"," + ret_pit + sum(pitw) + "," + ret_pitw + f1p[-1] + "," + (end_time - start_time) + "\n"
+  # f.write(ret)
+  # f.close()
 
 def main():
   IM, FIM = IMGenerator()
