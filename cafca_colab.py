@@ -30,7 +30,7 @@ import torch
 
 
 target_scenario = 'OP_SUCCESS_RATE'  # INPUT: OP_SUCCESS_RATE or COLLISION
-LOG_PATH = 'C:/Users/Hyun/IdeaProjects/StarPlateS/SoS_Extension/logs_full/sample/'
+LOG_PATH = 'C:/Users/Hyun/IdeaProjects/StarPlateS/SoS_Extension/logs_full'
 V_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA'
 IDEAL_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA/Ideal'
 print('In Log Folder : ', os.listdir(LOG_PATH))
