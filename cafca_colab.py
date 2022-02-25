@@ -948,7 +948,7 @@ def RunLogFaultFlagger(IM, classLogs):
 import random
 import math
 
-def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE): # TODO cl_type: FCM, PFS (Picture Fuzzy Set), KS2M
+def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE, ideal_patterns, oracle_batch, IM_Index): # TODO cl_type: FCM, PFS (Picture Fuzzy Set), KS2M
   INIT_SIM_THRESHOLD = 0.4
   MAX_INIT_SIM_THRESHOLD = 0.6
   SENSITIVITY_THRESHOLD = 0.3
@@ -963,6 +963,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
   diss = np.zeros((C_VALUE, len(IM_)))
   iterations = 0
 
+  print("============== FCM Run ==============")
   while True: # Initial selection of C models from the whole models
     initial_sims = []
     max_flag = True
@@ -988,9 +989,12 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
     if max_flag and len(initial_sims) > 0 and sum(initial_sims)/len(initial_sims) < INIT_SIM_THRESHOLD: # If the average of the LCS_sim values of the models is non-acceptable, find other set of models
       break
 
+  print("============== Initial Patterns Selected ==============")
   prev_objs = -1 # Sum of Squared Errors for Fuzzy C-means clustering
-
+  f = open(join(V_PATH, "FCM_0.csv"), 'a')
   while iterations < MAX_ITERATION:
+    print("============== Iterations: " + str(iterations))
+    start_time = time.time()
     # If Patterns have None object, replace it to random im.
     for i in range(len(patterns)):
       if patterns[i] is None:
@@ -1002,6 +1006,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
         simvalues[j][k] = CAFCASimCal(patterns[j], IM_[k], DELAY_THRESHOLD)
         # diss[j][k] = 1 - simvalues[j][k]
     diss = 1 - simvalues
+    print("============== Sim & Dissims Calculated")
 
     # Membership calculation
     for j in range(C_VALUE):
@@ -1015,6 +1020,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
           memberships[j][k] = 1
         else:
           memberships[j][k] = 1 / temp
+    print("============== Memberships Calculated")
 
     # Clustering
     clusters = [[] for j in range(C_VALUE)]
@@ -1031,7 +1037,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
           if memberships[i][k] > memberships[max_idx][k]:
             max_idx = i
         clusters[max_idx].append(IM_[k])
-
+    print("============== Logs Clustered")
     # Pattern update
     patterns.fill(None)
     for j in range(C_VALUE):
@@ -1041,13 +1047,15 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
         # pattern = GetPattern(pattern, clusters[j][i], DELAY_THRESHOLD, MIN_LEN_THRESHOLD)
         pattern = GetPatternWithoutEnv(pattern, clusters[j][i], DELAY_THRESHOLD, MIN_LEN_THRESHOLD)
       patterns[j] = pattern
-
+    print("============== Patterns Updated")
     # Objective value calculation -> Basic FCM version
     objs = 0
     for j in range(C_VALUE):
       for k in range(len(IM_)):
         objs += math.pow(memberships[j][k], m) * math.pow(diss[j][k],2)
 
+    end_time = time.time()
+    print("============== Objectives Calculated")
     # for p in range(C_VALUE):  # Initial version based on Fast Fuzzy Algorithm
     #   val = 0
     #   denom = 0
@@ -1056,12 +1064,29 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
     #     denom += math.pow(memberships[p][j],FUZZY_THRESHOLD)
     #   objs += val / 2 * denom
 
+    # Evaluate the pattern mining & clustering results & Save them
+    pit = PIT(ideal_patterns, patterns, 0.05, 10)
+    pitw = PITW(ideal_patterns, patterns, 0.05, 10)
+    f1p = EvaluateF1P(oracle_batch, IM_Index, clusters)
+    print(str(0.5) + ", " + str(1 / C_VALUE) + ", " + str(iterations) + ", " + str(objs) + ": " + str(sum(pit)) + "," + str(sum(pitw)) + "," + str(f1p[-1]) + "," + str((end_time - start_time)))
+
+    ret = ""
+    ret_pit = ""
+    for val in pit:
+      ret_pit += str(val) + ","
+    ret_pitw = ""
+    for val in pitw:
+      ret_pitw += str(val) + ","
+    ret += str(0.5) + ", " + str(1 / C_VALUE) + ", " + str(iterations) + ", " + str(objs) + "," + str(sum(pit)) + "," + ret_pit + str(sum(pitw)) + "," + ret_pitw + str(f1p[-1]) + "," + (
+              str(end_time - start_time)) + "\n"
+    f.write(ret)
+
     if prev_objs != -1 and abs(objs - prev_objs) < SENSITIVITY_THRESHOLD:
       break
     else:
       prev_objs = objs
     iterations += 1
-
+  f.close()
   return patterns, clusters
 
 def IdealPatternReader():
@@ -1405,12 +1430,10 @@ def RunFCM(IM_, oracle):
 
   ideal_patterns = IdealPatternReader()
 
-  f = open(join(V_PATH, "FCM_0.csv"), 'w')
-  ret = ""
   # Run FCM with hyperparam settings
   # for DELAY_THRESHOLD in range(1, 11):
   start_time = time.time()
-  patterns, clusters = FCM(0, IM_Batch, 0.05, 1/C_VALUE, 10, C_VALUE)
+  patterns, clusters = FCM(0, IM_Batch, 0.05, 1/C_VALUE, 10, C_VALUE, ideal_patterns, oracle_batch, IM_Index)
   end_time = time.time()
 
   # Evaluate the pattern mining & clustering results
@@ -1418,6 +1441,8 @@ def RunFCM(IM_, oracle):
   pitw = PITW(ideal_patterns, patterns, 0.05, 10)
   f1p = EvaluateF1P(oracle_batch, IM_Index, clusters)
   print(0.5 + ", " +  1/C_VALUE + ": " +sum(pit) +"," + sum(pitw) + "," + f1p[-1] + "," + (end_time - start_time))
+  f = open(join(V_PATH, "FCM_0.csv"), 'w')
+  ret = ""
   ret_pit = ""
   for val in pit:
     ret_pit += val + ","
