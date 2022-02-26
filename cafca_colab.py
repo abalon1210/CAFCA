@@ -951,7 +951,7 @@ import math
 def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE, ideal_patterns, oracle_batch, IM_Index): # TODO cl_type: FCM, PFS (Picture Fuzzy Set), KS2M
   INIT_SIM_THRESHOLD = 0.4
   MAX_INIT_SIM_THRESHOLD = 0.6
-  SENSITIVITY_THRESHOLD = 0.3
+  SENSITIVITY_THRESHOLD = 0.1
   MAX_ITERATION = 100
   m = 2 # Fuzzy value
 
@@ -1029,7 +1029,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
       assign_flag = False
       for j in range(C_VALUE):
         if memberships[j][k] > SIM_THRESHOLD: # Clustering
-          if np.all(IM_[k] == clusters[j]):
+          if not IMExistChecker(IM_[k], clusters[j]):
             clusters[j].append(IM_[k])
             assign_flag = True
       if not assign_flag:
@@ -1068,7 +1068,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
     pit = PIT(ideal_patterns, patterns, 0.05, 10)
     pitw = PITW(ideal_patterns, patterns, 0.05, 10)
     f1p = EvaluateF1P(oracle_batch, IM_Index, clusters)
-    print(str(0.05) + ", " + str(1 / C_VALUE) + ", " + str(iterations) + ", " + str(objs) + ": " + str(sum(pit)) + "," + str(sum(pitw)) + "," + str(f1p[-1]) + "," + str((end_time - start_time)))
+    print("d_threshold:" + str(0.05) + ", " + "sim_threshold:" + str(1 / C_VALUE) + ", " + "iterations:" + str(iterations) + ", objs:" + str(objs) + "==> PIT:" + str(sum(pit)) + ", PITW:" + str(sum(pitw)) + ", F1P:" + str(f1p[-1]) + ", Time:" + str((end_time - start_time)))
 
     ret = ""
     ret_pit = ""
@@ -1088,6 +1088,13 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
     iterations += 1
   f.close()
   return patterns, clusters
+
+def IMExistChecker(im, cluster):
+  ret = False
+  for clustered_im in cluster:
+    if im[0] == clustered_im[0]: ret = True
+
+  return ret
 
 def IdealPatternReader():
   ideals = []
@@ -1172,11 +1179,13 @@ def PIT(ideal_patterns, patterns, d_threshold, min_len_threshold):
   matched = []
   ret_PITs = []
   for idx, id_pattern in enumerate(ideal_patterns):
-    max_PIT = -1
+    max_PIT = 0
     for idx_gen, gen_pattern in enumerate(patterns):
       if idx_gen in matched:
         continue
-      lcs = GetPatternWithoutEnv(id_pattern, gen_pattern, d_threshold, min_len_threshold)[2]
+      lcs = GetPatternSimWithoutEnv(id_pattern, gen_pattern, d_threshold)[0][2]
+      if lcs is None:
+        continue
       if max_PIT < (len(lcs) / len(id_pattern[2])):
         max_PIT = len(lcs) / len(id_pattern[2])
         matched_id = idx_gen
@@ -1190,11 +1199,13 @@ def PITW(ideal_patterns, patterns, d_threshold, min_len_threshold):
   matched = []
   ret_PITWs = []
   for idx, id_pattern in enumerate(ideal_patterns):
-    max_PITW = -1
+    max_PITW = 0
     for idx_gen, gen_pattern in enumerate(patterns):
       if idx_gen in matched:
         continue
-      lcs = GetPatternWithoutEnv(id_pattern, gen_pattern, d_threshold, min_len_threshold)[2]
+      lcs = GetPatternSimWithoutEnv(id_pattern, gen_pattern, d_threshold)[0][2]
+      if lcs is None:
+        continue
       weight_lcs = 0
       for message in lcs:
         if len(message) >= 7:
@@ -1338,12 +1349,13 @@ def EvaluateF1P(oracle,index,cluster): #oracle: [[str]], index: [str], cluster: 
         c_index  = []
         o_index = []
 
-        for cl in oracle:
-            if(id in cl): o_index.append(oracle.index(cl))
+        for idx, cl in enumerate(oracle):
+            if(id in cl): o_index.append(idx)
 
-        for IMs in cluster:
+        for idx, IMs in enumerate(cluster):
             for IM in IMs:
-                if IM[0] == id: c_index.append(cluster.index(IMs)) #IM[0] : id of the IM
+                if IM[0] == id:
+                  c_index.append(idx) #IM[0] : id of the IM
 
         o_element_index[id] = o_index
         c_element_index[id] = c_index
@@ -1367,7 +1379,10 @@ def EvaluateF1P(oracle,index,cluster): #oracle: [[str]], index: [str], cluster: 
 
             matched_cntb = sumContributions(matched,c_element_index)
 
-            tempMatch = math.pow(matched_cntb,2) / (cl_cl_cntb*cl_or_cntb)
+            if (cl_cl_cntb * cl_or_cntb) == 0:
+              tempMatch = 0
+            else:
+              tempMatch = math.pow(matched_cntb,2) / (cl_cl_cntb*cl_or_cntb)
             if tempMatch > bestMatch:
                 bestMatch = tempMatch
         bestMatches_cl.append(math.sqrt(bestMatch))
@@ -1389,7 +1404,10 @@ def EvaluateF1P(oracle,index,cluster): #oracle: [[str]], index: [str], cluster: 
 
             matched_cntb = sumContributions(matched,o_element_index)
 
-            tempMatch = math.pow(matched_cntb,2) / (cl_cl_cntb*cl_or_cntb)
+            if (cl_cl_cntb * cl_or_cntb) == 0:
+              tempMatch = 0
+            else:
+              tempMatch = math.pow(matched_cntb, 2) / (cl_cl_cntb * cl_or_cntb)
             if tempMatch > bestMatch:
                 bestMatch = tempMatch
         bestMatches_or.append(math.sqrt(bestMatch))
