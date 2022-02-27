@@ -1182,6 +1182,7 @@ def PIT(ideal_patterns, patterns, d_threshold, oracle_batch):
   for idx, id_pattern in enumerate(ideal_patterns):
     if len(oracle_batch[id_index[idx]-1]) == 0:
       ret_PITs.append(0)
+      continue
     max_PIT = 0
     for idx_gen, gen_pattern in enumerate(patterns):
       if idx_gen in matched:
@@ -1204,6 +1205,7 @@ def PITW(ideal_patterns, patterns, d_threshold, oracle_batch):
   for idx, id_pattern in enumerate(ideal_patterns):
     if len(oracle_batch[id_index[idx]-1]) == 0:
       ret_PITWs.append(0)
+      continue
     max_PITW = 0
     for idx_gen, gen_pattern in enumerate(patterns):
       if idx_gen in matched:
