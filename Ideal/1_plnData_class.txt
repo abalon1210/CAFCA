@@ -1,0 +1,21 @@
+configName      Class 1
+
+timeStep    vehId          fromState                     toState                       commandSent    receiverId     senderPltId    receiverPltId    maneuverStartEnd 
+
+33.56       veh.4          state_sendMergeReq            state_waitForMergeReply       MERGE_REQ      veh.2          veh.4          veh.2            Merge_Request	1
+33.56       veh.2          state_sendMergeReq            state_waitForMergeReply       MERGE_REQ      veh            veh.2          veh              Merge_Request	1
+33.66       veh            state_sendMergeAccept         state_waitForMergeDone        MERGE_ACCEPT   veh.2          veh            veh.2            -	0
+34.66       veh.4          state_sendMergeReq            state_waitForMergeReply       MERGE_REQ      veh.2          veh.4          veh.2            Merge_Request	1   
+34.72       veh.2          state_waitForCatchup          state_waitForCatchup          MERGE_REJECT   veh.4          veh.2          veh.4            -	1
+34.76       veh.4          state_sendMergeReq            state_waitForMergeReply       MERGE_REQ      veh.2          veh.4          veh.2            Merge_Request	1
+34.83       veh.2          state_waitForCatchup          state_waitForCatchup          MERGE_REJECT   veh.4          veh.2          veh.4            -	1
+34.96       veh.4          state_sendMergeReq            state_waitForMergeReply       MERGE_REQ      veh.2          veh.4          veh.2            Merge_Request	0
+35.02       veh.2          state_waitForCatchup          state_waitForCatchup          MERGE_REJECT   veh.4          veh.2          veh.4            -	0
+35.16       veh.4          state_sendMergeReq            state_waitForMergeReply       MERGE_REQ      veh.2          veh.4          veh.2            Merge_Request	0
+35.24       veh.2          state_waitForCatchup          state_waitForCatchup          MERGE_REJECT   veh.4          veh.2          veh.4            -	0
+35.36       veh.4          state_sendMergeReq            state_waitForMergeReply       MERGE_REQ      veh.2          veh.4          veh.2            Merge_Request	0
+35.41       veh.2          state_waitForCatchup          state_waitForCatchup          MERGE_REJECT   veh.4          veh.2          veh.4            -	0
+38.66       veh            state_sendMergeAccept         state_waitForMergeDone        MERGE_ACCEPT   veh.2          veh            veh.2            -	0
+38.66       veh.4          state_sendMergeReq            state_waitForMergeReply       MERGE_REQ      veh.2          veh.4          veh.2            Merge_Request	0
+38.66       veh.2          state_waitForCatchup          state_waitForCatchup          MERGE_REJECT   veh.4          veh.2          veh.4            -	0
+        
