@@ -959,9 +959,19 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
   # memberships = [[random.randrange(0,1) for i in range(len(IM_))] for j in range(C_VALUE)]
   # diss = [[random.randrange(0,1) for i in range(len(IM_))] for j in range(C_VALUE)]
   simvalues = np.zeros((C_VALUE, len(IM_)))
+  simvalues_item = np.zeors((len(IM_), len(IM_)))
   memberships = np.zeros((C_VALUE, len(IM_)))
-  diss = np.zeros((C_VALUE, len(IM_)))
+  prev_memberships = np.random.rand((C_VALUE, len(IM_)))
   iterations = 0
+
+  if cl_type == 1:
+    for k in range(len(IM_)):
+      for l in range(k, len(IM_)):
+        if k == l:
+          simvalues_item[k][l] = 1.0
+        else:
+          simvalues_item[k][l] = CAFCASimCal(IM_[k], IM_[l], DELAY_THRESHOLD)
+    diss_item = 1 - simvalues_item
 
   print("============== FCM Run ==============")
   while True: # Initial selection of C models from the whole models
@@ -1009,17 +1019,35 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
     print("============== Sim & Dissims Calculated")
 
     # Membership calculation
-    for j in range(C_VALUE):
-      for k in range(len(IM_)):
-        temp = 0
-        for i in range(C_VALUE):
-          if diss[i][k] == 0:
-            continue
-          temp += math.pow(diss[j][k] / diss[i][k], 2/(m-1))
-        if temp == 0:
-          memberships[j][k] = 1
-        else:
-          memberships[j][k] = 1 / temp
+    if cl_type == 0: # FCM
+      for j in range(C_VALUE):
+        for k in range(len(IM_)):
+          temp = 0
+          for i in range(C_VALUE):
+            if diss[i][k] == 0:
+              continue
+            temp += math.pow(diss[j][k] / diss[i][k], 2/(m-1))
+          if temp == 0:
+            memberships[j][k] = 1
+          else:
+            memberships[j][k] = 1 / temp
+    elif cl_type == 1: # CAFCA
+      if iterations != 0:
+        prev_memberships = copy.deepcopy(memberships)
+      temp_numer = 0
+      for j in range(C_VALUE):
+        for k in range(len(IM_)):
+          temp = 0
+          for i in range(C_VALUE):
+            val = math.pow(D(diss, prev_memberships, i, k, m, diss_item), 1/(1-m))
+            temp += val
+            if i == j:
+              temp_numer = val
+          if temp == 0:
+            memberships[j][k] = 0
+          else:
+            memberships[j][k] = temp_numer / temp
+
     print("============== Memberships Calculated")
 
     # Clustering
@@ -1038,6 +1066,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
             max_idx = i
         clusters[max_idx].append(IM_[k])
     print("============== Logs Clustered")
+
     # Pattern update
     patterns.fill(None)
     for j in range(C_VALUE):
@@ -1048,11 +1077,27 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
         pattern = GetPatternWithoutEnv(pattern, clusters[j][i], DELAY_THRESHOLD, MIN_LEN_THRESHOLD)
       patterns[j] = pattern
     print("============== Patterns Updated")
+
     # Objective value calculation -> Basic FCM version
-    objs = 0
-    for j in range(C_VALUE):
-      for k in range(len(IM_)):
-        objs += math.pow(memberships[j][k], m) * math.pow(diss[j][k],2)
+    objs = 0.0
+    if cl_type == 0: #FCM
+      for j in range(C_VALUE):
+        for k in range(len(IM_)):
+         objs += math.pow(memberships[j][k], m) * math.pow(diss[j][k],2)
+    elif cl_type == 1: #CAFCA
+      for j in range(C_VALUE):
+        denom = 0.0
+        numer = 0.0
+        for k in range(len(IM_)):
+          val = math.pow(memberships[j][k], m)
+          objs += val * math.pow(diss[j][k],2)
+          denom += val
+          for l in range(len(IM_)):
+            if k < l:
+              numer += val * math.pow(memberships[j][l],m) * math.pow(diss_item[k][l],2)
+            else:
+              numer += val * math.pow(memberships[j][l], m) * math.pow(diss_item[l][k],2)
+        objs += numer / denom
 
     end_time = time.time()
     print("============== Objectives Calculated")
@@ -1088,6 +1133,21 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
     iterations += 1
   f.close()
   return patterns, clusters
+
+def D(diss, prev_memberships, index_cluster, index_item, m, diss_item): #index_cluster: j , index_item: k
+  ret = 0.0
+  ret += math.pow(diss(index_cluster, index_item), 2)
+  denom = 0.0
+  numer = 0.0
+  for h in range(len(diss_item)):
+    if h == index_item:
+      continue
+    denom += math.pow(prev_memberships[index_cluster][h], m)
+    if h < index_item:
+      numer += math.pow(prev_memberships[index_cluster][h], m) * math.pow((diss_item[h][index_item]), 2)
+    else:
+      numer += math.pow(prev_memberships[index_cluster][h], m) * math.pow((diss_item[index_item][h]), 2)
+    return ret + (numer/denom)
 
 def IMExistChecker(im, cluster):
   ret = False
