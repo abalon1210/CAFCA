@@ -29,9 +29,9 @@ from numpy.linalg import norm
 # import torch
 
 target_scenario = 'OP_SUCCESS_RATE'  # INPUT: OP_SUCCESS_RATE or COLLISION
-LOG_PATH = 'C:/Users/Administrator/IdeaProjects/StarPlateS/SoS_Extension/logs_full/sample'
-V_PATH = 'C:/Users/Administrator/IdeaProjects/CAFCA'
-IDEAL_PATH = 'C:/Users/Administrator/IdeaProjects/CAFCA/Ideal'
+LOG_PATH = 'C:/Users/Hyun/IdeaProjects/StarPlateS/SoS_Extension/logs_full'
+V_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA'
+IDEAL_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA/Ideal'
 
 print('In Log Folder : ', os.listdir(LOG_PATH))
 
@@ -100,6 +100,7 @@ def IMGenerator():
           env.append(copy.deepcopy(state))
           state = []
       f.close()
+      env = np.array(env)
       im.append(copy.deepcopy(env))
     elif 'plnData' in strings[1]: # Extract interaction data
       interaction = [] # ======> interaction = [message0, message1, message2, ...] ordered chronologically
@@ -169,6 +170,7 @@ def IMGenerator():
         if len(message) != 0:
           interaction.append(copy.deepcopy(message))
       f.close()
+      interaction = np.array(interaction)
       im.append(copy.deepcopy(interaction))
   # print(IM[1865]) # Random print of a single m
   return IM, FIM
@@ -255,7 +257,7 @@ def MCT(msg_a, msg_b): # Compare the identity of the two messages => [time, comm
   return msg_a[1] == msg_b[1] and msg_a[3] == msg_b[3] and msg_a[5] == msg_b[5]
 
 def CalMessageDelay(msg_a, msg_b, msg_a_prev, msg_b_prev, d_threshold): # Check the delivery intervals of the two messages
-  if msg_a_prev == None or msg_b_prev == None:
+  if msg_a_prev is None or msg_b_prev is None:
     return True
   delay_a = float(msg_a[0]) - float(msg_a_prev[0])
   delay_b = float(msg_b[0]) - float(msg_b_prev[0])
@@ -335,8 +337,8 @@ def Quantification(distance): # 5: Very far / 4: Far / 3: Appropriate / 2: Close
 # Inputs: two models (pattern and input), d_threshold
 # Outputs: The most critical LCS among possible LCS generation sets, the LCS similarity value with the pattern and input models.
 def CAFCASimCal(im_pattern, im_input, d_threshold):
-  p = 1.0 # 0.5
-  q = 0.5
+  p = 1.0
+  q = 0
   # generated_pattern, avg_env_sim = GetPatternSim(im_pattern, im_input, d_threshold)
   generated_pattern, avg_env_sim = GetPatternSimWithoutEnv(im_pattern, im_input, d_threshold)
   # return p * (len(generated_pattern[2]) / (len(im_pattern[2]) * len(im_input[2]))) + q * avg_env_sim
@@ -345,6 +347,8 @@ def CAFCASimCal(im_pattern, im_input, d_threshold):
   return p * (len(generated_pattern[2]) / len(im_pattern[2])) + q * avg_env_sim
 
 def PatternExtractor(im_pattern, im_input, d_threshold):
+  if im_pattern is None or im_input is None or im_pattern[2] is None or im_input[2] is None:
+    return None
   pattern = im_pattern[2]
   pattern_env = im_pattern[3]
   input = im_input[2]
@@ -362,7 +366,7 @@ def PatternExtractor(im_pattern, im_input, d_threshold):
     for j in range(len_input + 1):
       if i == 0 or j == 0:
         continue
-      flag, env_sim = ESMIC(pattern[i - 1], input[j - 1], pattern_prev_msg, input_prev_msg, pattern_env, input_env, d_threshold, 2, 0.8)
+      flag, env_sim = ESMIC(pattern[i - 1], input[j - 1], pattern_prev_msg, input_prev_msg, pattern_env, input_env, d_threshold, 1, 0.8)
       if flag:  # Env State & Message Identity Checking (ESMIC) function usage example.
         LCS[i][j] = LCS[i - 1][j - 1] + 1
         env_sims.append(env_sim)  # Save the env_sim values when the two messages are matched.
@@ -375,7 +379,7 @@ def PatternExtractor(im_pattern, im_input, d_threshold):
   # Extract the LCS from the table
   ret = []
   if LCS[len_ptn][len_input] == 0:
-    return None, None
+    return None
   else:
     current = 0
     for i in range(1, len_ptn + 1):
@@ -433,9 +437,11 @@ def GetPattern(im_pattern, im_input, d_threshold, min_len_threshold):  # LCS pat
   for t in T:
     for t_ in T:
       generated_pattern, avg_env_sim = PatternExtractor(InteractionSeqSlicer(im_pattern, t),
-                                                        InteractionSeqSlicer(im_input, t_), d_threshold)
+                                                        InteractionSeqSlicer(im_input, t_), d_threshold)  or (None, None)
       generated_lcs.append(generated_pattern)
       generated_avg_env_sim.append(avg_env_sim)
+      if generated_pattern is None: # Don't need to check the other consecutive options if a None appears
+        break
   max_LCS, max_avg_env_sim = GetMaxContentLCS(generated_lcs, generated_avg_env_sim)
   if not max_LCS or len(max_LCS) < min_len_threshold:
     max_LCS = im_pattern[2]
@@ -454,9 +460,11 @@ def GetPatternSim(im_pattern, im_input, d_threshold):  # LCS pattern extraction 
   T = [25, 45, 65, 85]
   for t in T:
     for t_ in T:
-      generated_pattern, avg_env_sim = PatternExtractor(InteractionSeqSlicer(im_pattern, t), InteractionSeqSlicer(im_input, t_), d_threshold)
+      generated_pattern, avg_env_sim = PatternExtractor(InteractionSeqSlicer(im_pattern, t), InteractionSeqSlicer(im_input, t_), d_threshold) or (None, None)
       generated_lcs.append(generated_pattern)
       generated_avg_env_sim.append(avg_env_sim)
+      if generated_pattern is None: # Don't need to check the other consecutive options if a None appears
+        break
   max_LCS, max_avg_env_sim = GetMaxContentLCS(generated_lcs, generated_avg_env_sim)
   ret.append(im_pattern[0])
   ret.append(im_pattern[1])
@@ -470,16 +478,18 @@ def GetPatternWithoutEnv(im_pattern, im_input, d_threshold, min_len_threshold):
   generated_lcs = []
   ret = []  # returned pattern with the structure of im.
   T = [25, 45, 65, 85]
-  for t in T:
-    generated_pattern = PatternExtractorWithoutEnv(InteractionSeqSlicer(im_pattern, t),
-                                                   InteractionSeqSlicer(im_input, t), d_threshold)
-    generated_lcs.append(generated_pattern)
   # for t in T:
-  #   for t_ in T:
-  #     # generated_pattern, avg_env_sim = PatternExtractor(InteractionSeqSlicer(im_pattern, t), InteractionSeqSlicer(im_input, t), d_threshold)
-  #     generated_pattern = PatternExtractorWithoutEnv(InteractionSeqSlicer(im_pattern, t),
-  #                                                    InteractionSeqSlicer(im_input, t_), d_threshold)
-  #     generated_lcs.append(generated_pattern)
+    # generated_pattern = PatternExtractorWithoutEnv(InteractionSeqSlicer(im_pattern, t),
+    #                                                InteractionSeqSlicer(im_input, t), d_threshold)
+    # generated_lcs.append(generated_pattern)
+  for t in T:
+    for t_ in T:
+      # generated_pattern, avg_env_sim = PatternExtractor(InteractionSeqSlicer(im_pattern, t), InteractionSeqSlicer(im_input, t), d_threshold)
+      generated_pattern = PatternExtractorWithoutEnv(InteractionSeqSlicer(im_pattern, t),
+                                                     InteractionSeqSlicer(im_input, t_), d_threshold)
+      generated_lcs.append(generated_pattern)
+      if generated_pattern is None: # Don't need to check the other consecutive options if a None appears
+        break
   max_LCS, max_avg_env_sim = GetMaxContentLCS(generated_lcs, None)
   if not max_LCS or len(max_LCS) < min_len_threshold:
     max_LCS = im_pattern[2]
@@ -496,12 +506,14 @@ def GetPatternSimWithoutEnv(im_pattern, im_input, d_threshold):
   ret = [] # returned pattern with the structure of im.
   T = [25, 45, 65, 85]
   for t in T:
-    generated_pattern= PatternExtractorWithoutEnv(im_pattern, InteractionSeqSlicer(im_input, t), d_threshold)
-    generated_lcs.append(generated_pattern)
-    # for t_ in T:
-    #   # generated_pattern, avg_env_sim = PatternExtractor(InteractionSeqSlicer(im_pattern, t), InteractionSeqSlicer(im_input, t), d_threshold)
-    #   generated_pattern= PatternExtractorWithoutEnv(InteractionSeqSlicer(im_pattern, t),InteractionSeqSlicer(im_input, t_), d_threshold)
-    #   generated_lcs.append(generated_pattern)
+    # generated_pattern= PatternExtractorWithoutEnv(im_pattern, InteractionSeqSlicer(im_input, t), d_threshold)
+    # generated_lcs.append(generated_pattern)
+    for t_ in T:
+      # generated_pattern, avg_env_sim = PatternExtractor(InteractionSeqSlicer(im_pattern, t), InteractionSeqSlicer(im_input, t), d_threshold)
+      generated_pattern= PatternExtractorWithoutEnv(InteractionSeqSlicer(im_pattern, t),InteractionSeqSlicer(im_input, t_), d_threshold)
+      generated_lcs.append(generated_pattern)
+      if generated_pattern is None: # Don't need to check the other consecutive options if a None appears
+        break
   max_LCS, max_avg_env_sim = GetMaxContentLCS(generated_lcs, None)
   ret.append(im_pattern[0])
   ret.append(im_pattern[1])
@@ -958,10 +970,10 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
   # simvalues = [[random.randrange(0,1) for i in range(len(IM_))] for j in range(C_VALUE)]
   # memberships = [[random.randrange(0,1) for i in range(len(IM_))] for j in range(C_VALUE)]
   # diss = [[random.randrange(0,1) for i in range(len(IM_))] for j in range(C_VALUE)]
-  simvalues = np.zeros((C_VALUE, len(IM_)))
-  simvalues_item = np.zeors((len(IM_), len(IM_)))
-  memberships = np.zeros((C_VALUE, len(IM_)))
-  prev_memberships = np.random.rand((C_VALUE, len(IM_)))
+  simvalues = np.zeros((len(IM_),C_VALUE))
+  simvalues_item = np.zeros((len(IM_), len(IM_)))
+  memberships = np.zeros((len(IM_),C_VALUE))
+  prev_memberships = np.random.rand(len(IM_), C_VALUE)
   iterations = 0
 
   if cl_type == 1:
@@ -1011,26 +1023,38 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
         patterns[i] = IM_[random.randint(0,len(IM_)-1)]
 
     # Similarity & Dissimilarity value calculation between patterns and models
-    for j in range(C_VALUE):
-      for k in range(len(IM_)):
-        simvalues[j][k] = CAFCASimCal(patterns[j], IM_[k], DELAY_THRESHOLD)
+    for k in range(len(IM_)):
+      for j in range(C_VALUE):
+        simvalues[k][j] = CAFCASimCal(patterns[j], IM_[k], DELAY_THRESHOLD)
         # diss[j][k] = 1 - simvalues[j][k]
     diss = 1 - simvalues
     print("============== Sim & Dissims Calculated")
 
     # Membership calculation
     if cl_type == 0: # FCM
-      for j in range(C_VALUE):
-        for k in range(len(IM_)):
-          temp = 0
-          for i in range(C_VALUE):
-            if diss[i][k] == 0:
-              continue
-            temp += math.pow(diss[j][k] / diss[i][k], 2/(m-1))
-          if temp == 0:
-            memberships[j][k] = 1
+      for k in range(len(IM_)):
+        temp = np.zeros(C_VALUE)
+        for j in range(C_VALUE):
+          if diss[k][j] == 0:
+            memberships[k][j] = 1
           else:
-            memberships[j][k] = 1 / temp
+            temp[j] = math.pow(diss[k][j], 2/(1-m))
+        for j in range(C_VALUE):
+          if temp[j] == 0:
+            continue
+          else:
+            memberships[k][j] = temp[j] / sum(temp)
+      # for j in range(C_VALUE):
+      #   for k in range(len(IM_)):
+      #     temp = 0
+      #     for i in range(C_VALUE):
+      #       if diss[i][k] == 0:
+      #         continue
+      #       temp += math.pow(diss[j][k] / diss[i][k], 2/(m-1))
+      #     if temp == 0:
+      #       memberships[j][k] = 1
+      #     else:
+      #       memberships[j][k] = 1 / temp
     elif cl_type == 1: # CAFCA
       if iterations != 0:
         prev_memberships = copy.deepcopy(memberships)
@@ -1044,9 +1068,9 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
             if i == j:
               temp_numer = val
           if temp == 0:
-            memberships[j][k] = 0
+            memberships[k][j] = 0
           else:
-            memberships[j][k] = temp_numer / temp
+            memberships[k][j] = temp_numer / temp
 
     print("============== Memberships Calculated")
 
@@ -1056,7 +1080,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
       max_idx = 0
       assign_flag = False
       for j in range(C_VALUE):
-        if memberships[j][k] > SIM_THRESHOLD: # Clustering
+        if memberships[k][j] > SIM_THRESHOLD: # Clustering
           if not IMExistChecker(IM_[k], clusters[j]):
             clusters[j].append(IM_[k])
             assign_flag = True
@@ -1083,20 +1107,20 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
     if cl_type == 0: #FCM
       for j in range(C_VALUE):
         for k in range(len(IM_)):
-         objs += math.pow(memberships[j][k], m) * math.pow(diss[j][k],2)
+         objs += math.pow(memberships[k][j], m) * math.pow(diss[k][j],2)
     elif cl_type == 1: #CAFCA
       for j in range(C_VALUE):
         denom = 0.0
         numer = 0.0
         for k in range(len(IM_)):
-          val = math.pow(memberships[j][k], m)
-          objs += val * math.pow(diss[j][k],2)
+          val = math.pow(memberships[k][j], m)
+          objs += val * math.pow(diss[k][j],2)
           denom += val
           for l in range(len(IM_)):
             if k < l:
-              numer += val * math.pow(memberships[j][l],m) * math.pow(diss_item[k][l],2)
+              numer += val * math.pow(memberships[l][j],m) * math.pow(diss_item[k][l],2)
             else:
-              numer += val * math.pow(memberships[j][l], m) * math.pow(diss_item[l][k],2)
+              numer += val * math.pow(memberships[l][j], m) * math.pow(diss_item[l][k],2)
         objs += numer / denom
 
     end_time = time.time()
@@ -1113,7 +1137,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
     pit = PIT(ideal_patterns, patterns, 0.05, oracle_batch)
     pitw = PITW(ideal_patterns, patterns, 0.05, oracle_batch)
     f1p = EvaluateF1P(oracle_batch, IM_Index, clusters)
-    print("d_threshold:" + str(0.05) + ", " + "sim_threshold:" + str(1 / C_VALUE) + ", " + "iterations:" + str(iterations) + ", objs:" + str(objs) + "==> PIT:" + str(sum(pit)) + ", PITW:" + str(sum(pitw)) + ", F1P:" + str(f1p[-1]) + ", Time:" + str((end_time - start_time)))
+    print("d_threshold:" + str(DELAY_THRESHOLD) + ", " + "sim_threshold:" + str(SIM_THRESHOLD) + ", " + "iterations:" + str(iterations) + ", objs:" + str(objs) + "==> PIT:" + str(sum(pit)) + ", PITW:" + str(sum(pitw)) + ", F1P:" + str(f1p[-1]) + ", Time:" + str((end_time - start_time)))
 
     ret = ""
     ret_pit = ""
@@ -1122,7 +1146,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
     ret_pitw = ""
     for val in pitw:
       ret_pitw += str(val) + ","
-    ret += str(0.05) + ", " + str(1 / C_VALUE) + ", " + str(iterations) + ", " + str(objs) + "," + str(sum(pit)) + "," + ret_pit + str(sum(pitw)) + "," + ret_pitw + str(f1p[-1]) + "," + (
+    ret += str(DELAY_THRESHOLD) + ", " + str(SIM_THRESHOLD) + ", " + str(iterations) + ", " + str(objs) + "," + str(sum(pit)) + "," + ret_pit + str(sum(pitw)) + "," + ret_pitw + str(f1p[-1]) + "," + (
               str(end_time - start_time)) + "\n"
     f.write(ret)
 
@@ -1227,6 +1251,7 @@ def IdealPatternReader():
       if len(message) != 0:
         interaction.append(copy.deepcopy(message))
     f.close()
+    interaction = np.array(interaction)
     pattern = []
     pattern.append(filename)
     pattern.append("False")
@@ -1518,7 +1543,7 @@ def RunFCM(IM_, oracle):
   # Run FCM with hyperparam settings
   # for DELAY_THRESHOLD in range(1, 11):
   # start_time = time.time()
-  patterns, clusters = FCM(0, IM_Batch, 0.05, 1/C_VALUE, 10, C_VALUE, ideal_patterns, oracle_batch, IM_Index)
+  patterns, clusters = FCM(0, IM_Batch, 0.05, 0.3, 7, C_VALUE, ideal_patterns, oracle_batch, IM_Index)
   # end_time = time.time()
 
   # Evaluate the pattern mining & clustering results
