@@ -428,7 +428,7 @@ def PatternExtractor(im_pattern, im_input, d_threshold):
   #   env_ret = False
   # env_ret = True
 
-  return ret, pattern_env, env_sims
+  return ret, pattern_env, sum(env_sims) / len(env_sims)
 
 def PatternExtractorWithoutEnv(im_pattern, im_input, d_threshold):
   if im_pattern is None or im_input is None or im_pattern[2] is None or im_input[2] is None:
@@ -473,45 +473,44 @@ def GetPattern(im_pattern, im_input, d_threshold, min_len_threshold):  # LCS pat
     return im_input
   generated_lcs = []
   generated_avg_env_sim = []
+  generated_env = []
   ret = []  # returned pattern with the structure of im.
   T = [25, 45, 65, 85]
   for t in T:
     for t_ in T:
-      generated_pattern, avg_env_sim = PatternExtractor(InteractionSeqSlicer(im_pattern, t),
-                                                        InteractionSeqSlicer(im_input, t_), d_threshold)  or (None, None)
+      generated_pattern, sliced_env, avg_env_sim = PatternExtractor(InteractionSeqSlicer(im_pattern, t),InteractionSeqSlicer(im_input, t_),d_threshold) or (None, None)
       generated_lcs.append(generated_pattern)
+      generated_env.append(sliced_env)
       generated_avg_env_sim.append(avg_env_sim)
-      if generated_pattern is None: # Don't need to check the other consecutive options if a None appears
-        break
-  max_LCS, max_avg_env_sim = GetMaxContentLCS(generated_lcs, generated_avg_env_sim)
-  if not max_LCS or len(max_LCS) < min_len_threshold:
-    max_LCS = im_pattern[2]
+  max_LCS, max_env = GetMaxContentLCS(generated_lcs, generated_env)
   ret.append(im_pattern[0])
   ret.append(im_pattern[1])
   ret.append(max_LCS)
-  ret.append(im_pattern[3])
-  return ret
+  ret.append(max_env)
+  return ret, np.nanmax(generated_avg_env_sim)
 
 def GetPatternSim(im_pattern, im_input, d_threshold):  # LCS pattern extraction function
   if im_pattern is None:
     return im_input
   generated_lcs = []
   generated_avg_env_sim = []
+  generated_env = []
   ret = []  # returned pattern with the structure of im.
   T = [25, 45, 65, 85]
   for t in T:
     for t_ in T:
-      generated_pattern, avg_env_sim = PatternExtractor(InteractionSeqSlicer(im_pattern, t), InteractionSeqSlicer(im_input, t_), d_threshold) or (None, None)
+      generated_pattern, sliced_env, avg_env_sim = PatternExtractor(InteractionSeqSlicer(im_pattern, t), InteractionSeqSlicer(im_input, t_), d_threshold) or (None, None)
       generated_lcs.append(generated_pattern)
+      generated_env.append(sliced_env)
       generated_avg_env_sim.append(avg_env_sim)
       if generated_pattern is None: # Don't need to check the other consecutive options if a None appears
         break
-  max_LCS, max_avg_env_sim = GetMaxContentLCS(generated_lcs, generated_avg_env_sim)
+  max_LCS, max_env = GetMaxContentLCS(generated_lcs, generated_env)
   ret.append(im_pattern[0])
   ret.append(im_pattern[1])
   ret.append(max_LCS)
-  ret.append(im_pattern[3])
-  return ret, max_avg_env_sim
+  ret.append(max_env)
+  return ret, np.nanmax(generated_avg_env_sim)
 
 def GetPatternWithoutEnv(im_pattern, im_input, d_threshold, min_len_threshold):
   if im_pattern is None:
@@ -562,14 +561,14 @@ def GetPatternSimWithoutEnv(im_pattern, im_input, d_threshold):
   ret.append([])
   return ret, 0
 
-def GetMaxContentLCS(generated_lcs, generated_avg_env_sim):  # GetMaxContentLCS among the generated LCSs
+def GetMaxContentLCS(generated_lcs, generated_env):  # GetMaxContentLCS among the generated LCSs
   ret_max = None
   ret_max_env = None
   max_contents = -1
   max_len = -1
   if not generated_lcs:
     return None, None
-  if generated_avg_env_sim:
+  if generated_env:
     for idx, lcs_pattern in enumerate(generated_lcs):
       if not lcs_pattern:
         continue
@@ -579,13 +578,13 @@ def GetMaxContentLCS(generated_lcs, generated_avg_env_sim):  # GetMaxContentLCS 
       if len(contents) > max_contents:  # Compare the number of types of contents in LCS pattern
         max_contents = len(contents)
         ret_max = lcs_pattern
-        ret_max_env = generated_avg_env_sim[idx]
+        ret_max_env = generated_env[idx]
         max_len = len(lcs_pattern)
       elif len(contents) == max_contents:  # If the number of content-types are same, select the shorter one.
         if max_len < len(lcs_pattern):
           max_contents = len(contents)
           ret_max = lcs_pattern
-          ret_max_env = generated_avg_env_sim[idx]
+          ret_max_env = generated_env[idx]
           max_len = len(lcs_pattern)
     return ret_max, ret_max_env
   else:
@@ -607,6 +606,8 @@ def GetMaxContentLCS(generated_lcs, generated_avg_env_sim):  # GetMaxContentLCS 
     return ret_max, None
 
 def InteractionSeqSlicer(im,time):  # Only slice the message sequences by the time TODO: If necessary, cover Env slicing too?
+  if time == 25:
+    return im
   ret = copy.deepcopy(im)
   ret_interaction = None
   for idx, message in enumerate(im[2]):
