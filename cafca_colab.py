@@ -29,7 +29,7 @@ from numpy.linalg import norm
 # import torch
 
 target_scenario = 'OP_SUCCESS_RATE'  # INPUT: OP_SUCCESS_RATE or COLLISION
-LOG_PATH = 'C:/Users/Hyun/IdeaProjects/StarPlateS/SoS_Extension/logs_full'
+LOG_PATH = 'C:/Users/Hyun/IdeaProjects/StarPlateS/SoS_Extension/logs_full/sample'
 V_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA'
 IDEAL_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA/Ideal'
 
@@ -339,8 +339,8 @@ def Quantification(distance): # 5: Very far / 4: Far / 3: Appropriate / 2: Close
 def CAFCASimCal(im_pattern, im_input, d_threshold):
   p = 1.0
   q = 0
-  # generated_pattern, avg_env_sim = GetPatternSim(im_pattern, im_input, d_threshold)
-  generated_pattern, avg_env_sim = GetPatternSimWithoutEnv(im_pattern, im_input, d_threshold)
+  generated_pattern, avg_env_sim = GetPatternSim(im_pattern, im_input, d_threshold)
+  # generated_pattern, avg_env_sim = GetPatternSimWithoutEnv(im_pattern, im_input, d_threshold)
   # return p * (len(generated_pattern[2]) / (len(im_pattern[2]) * len(im_input[2]))) + q * avg_env_sim
   if not generated_pattern[2]:
     return 0
@@ -350,29 +350,27 @@ def PatternExtractor(im_pattern, im_input, d_threshold):
   if im_pattern is None or im_input is None or im_pattern[2] is None or im_input[2] is None:
     return None
   pattern = im_pattern[2]
-  pattern_env = im_pattern[3]
   input = im_input[2]
-  input_env = im_input[3]
   len_ptn = len(pattern)
   len_input = len(input)
-  # LCS = [[0] * (len_input + 1) for i in range(len_ptn + 1)]
   LCS = np.zeros((len_ptn+1, len_input+1))
   pattern_prev_msg = None
   input_prev_msg = None
   env_sims = []
+  input_matched_t = []
+  pattern_matched_t = []
 
   # Generate the LCS table of the interaction models
   for i in range(len_ptn + 1):
     for j in range(len_input + 1):
       if i == 0 or j == 0:
         continue
-      flag, env_sim = ESMIC(pattern[i - 1], input[j - 1], pattern_prev_msg, input_prev_msg, pattern_env, input_env, d_threshold, 1, 0.8)
-      if flag:  # Env State & Message Identity Checking (ESMIC) function usage example.
+      if MCT(pattern[i - 1], input[j - 1]) and CalMessageDelay(pattern[i - 1], input[j - 1], pattern_prev_msg, input_prev_msg, d_threshold):
         LCS[i][j] = LCS[i - 1][j - 1] + 1
-        env_sims.append(env_sim)  # Save the env_sim values when the two messages are matched.
-        # You need to check the previously matched messages for checking the message delivery intervals of the two messages, respectively
         pattern_prev_msg = pattern[i - 1]
         input_prev_msg = input[j - 1]
+        input_matched_t.append(round(float(pattern[i-1][0]),1))
+        pattern_matched_t.append(round(float(input[j-1][0]),1))
       else:
         LCS[i][j] = max(LCS[i][j - 1], LCS[i - 1][j])
 
@@ -387,7 +385,50 @@ def PatternExtractor(im_pattern, im_input, d_threshold):
         if LCS[i][j] > current:
           current += 1
           ret.append(pattern[i - 1])
-    return ret, sum(env_sims) / len(env_sims)
+
+  i = 0
+  j = 0
+  time_window = 1.0
+  input_env = []
+  pattern_env = []
+  for state_b in im_input[3]:
+    if float(state_b[0]) < input_matched_t[j] - time_window:
+      continue
+    elif float(state_b[0]) > input_matched_t[j]:
+      break
+    input_env.append(state_b)
+    if float(state_b[0]) == input_matched_t[j]:
+      for j in range(len(input_matched_t)):
+        if input_matched_t[j] < float(input_env[-1][0]):
+          continue
+        elif input_matched_t[j] > float(input_env[-1][0]):
+          break
+      if j > len(input_matched_t)-1:
+        break
+
+  for state_a in im_pattern[3]:
+    if float(state_a[0]) <= pattern_matched_t[i] - time_window:
+      continue
+    elif float(state_a[0]) > pattern_matched_t[i]:
+      break
+    pattern_env.append(state_a)
+    if float(state_a[0]) == pattern_matched_t[i]:
+      for i in range(len(pattern_matched_t)):
+        if pattern_matched_t[i] < float(pattern_env[-1][0]):
+          continue
+        elif pattern_matched_t[i] > float(pattern_env[-1][0]):
+          break
+      if i > len(pattern_matched_t)-1:
+        break
+
+  for (state_a, state_b) in zip(pattern_env, input_env):
+    env_sims.append(EnvStateCompare(state_a, state_b))
+  #
+  # if np.nanmean(env_sims) < 0.8: # env_sim_threshold
+  #   env_ret = False
+  # env_ret = True
+
+  return ret, pattern_env, env_sims
 
 def PatternExtractorWithoutEnv(im_pattern, im_input, d_threshold):
   if im_pattern is None or im_input is None or im_pattern[2] is None or im_input[2] is None:
@@ -1086,7 +1127,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
             assign_flag = True
       if not assign_flag:
         for i in range(C_VALUE):
-          if memberships[i][k] > memberships[max_idx][k]:
+          if memberships[k][i] > memberships[k][max_idx]:
             max_idx = i
         clusters[max_idx].append(IM_[k])
     print("============== Logs Clustered")
@@ -1543,7 +1584,7 @@ def RunFCM(IM_, oracle):
   # Run FCM with hyperparam settings
   # for DELAY_THRESHOLD in range(1, 11):
   # start_time = time.time()
-  patterns, clusters = FCM(0, IM_Batch, 0.05, 0.3, 7, C_VALUE, ideal_patterns, oracle_batch, IM_Index)
+  patterns, clusters = FCM(0, IM_Batch, 0.05, 0.2, 10, C_VALUE, ideal_patterns, oracle_batch, IM_Index)
   # end_time = time.time()
 
   # Evaluate the pattern mining & clustering results
