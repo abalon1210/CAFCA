@@ -295,8 +295,10 @@ def EnvStatePreprocess(state): # Initially arrange the Env state data to diction
       lane = state[i]
     else:
       dic_state[veh_id] = (lane, state[i])
-  ret.append(vehDistanceGeneration(dic_state,'veh'))
-  ret.append(vehDistanceGeneration(dic_state,'veh1'))
+  if 'veh' in dic_state:
+    ret.append(vehDistanceGeneration(dic_state,'veh'))
+  if 'veh1' in dic_state:
+    ret.append(vehDistanceGeneration(dic_state,'veh1'))
   return ret
 
 def vehDistanceGeneration(dic_state, id):
