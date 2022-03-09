@@ -29,7 +29,7 @@ from numpy.linalg import norm
 # import torch
 
 target_scenario = 'OP_SUCCESS_RATE'  # INPUT: OP_SUCCESS_RATE or COLLISION
-LOG_PATH = 'C:/Users/Hyun/IdeaProjects/StarPlateS/SoS_Extension/logs_full/sample'
+LOG_PATH = 'C:/Users/Hyun/IdeaProjects/StarPlateS/SoS_Extension/logs_full'
 V_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA'
 IDEAL_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA/Ideal'
 
@@ -1010,7 +1010,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
   INIT_SIM_THRESHOLD = 0.4
   MAX_INIT_SIM_THRESHOLD = 0.6
   SENSITIVITY_THRESHOLD = 0.1
-  MAX_ITERATION = 100
+  MAX_ITERATION = 20
   m = 2 # Fuzzy value
 
   simvalues = np.zeros((len(IM_),C_VALUE))
@@ -1077,7 +1077,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
 
   print("============== Initial Patterns Selected ==============")
   prev_objs = -1 # Sum of Squared Errors for Fuzzy C-means clustering
-  f = open(join(V_PATH, "FCM_0.csv"), 'a')
+  f = open(join(V_PATH, "FCM_1.csv"), 'a')
   while iterations < MAX_ITERATION:
     print("============== Iterations: " + str(iterations))
     start_time = time.time()
@@ -1585,32 +1585,36 @@ def EvaluateF1P(oracle,index,cluster): #oracle: [[str]], index: [str], cluster: 
 def RunFCM(IM_, oracle):
   # IM Selection (Random)
   nIM_ = np.array(IM_)
-  np.random.shuffle(nIM_)
-  IM_Batch = nIM_[0:1000]
-  IM_Index = []
-  for im in IM_Batch:
-    IM_Index.append(im[0])
-  # C_VALUE setting codes by the randomly selelcted subset
-  C_VALUE = 0
-  oracle_batch = []
-  for cl in oracle:
-    cl_batch = []
-    assign_flag = False
+  j = 0
+  for i in range(12):
+    np.random.shuffle(nIM_)
+    IM_Batch = nIM_[0:1000]
+    IM_Index = []
     for im in IM_Batch:
-      if str(im[0])+"_0" in cl:
-        assign_flag = True
-        cl_batch.append(im[0])
-    if assign_flag:
-      C_VALUE += 1
-    oracle_batch.append(copy.deepcopy(cl_batch))
+      IM_Index.append(im[0])
+    # C_VALUE setting codes by the randomly selelcted subset
+    C_VALUE = 0
+    oracle_batch = []
+    for cl in oracle:
+      cl_batch = []
+      assign_flag = False
+      for im in IM_Batch:
+        if str(im[0])+"_0" in cl:
+          assign_flag = True
+          cl_batch.append(im[0])
+      if assign_flag:
+        C_VALUE += 1
+      oracle_batch.append(copy.deepcopy(cl_batch))
 
-  ideal_patterns = IdealPatternReader()
+    ideal_patterns = IdealPatternReader()
 
-  # Run FCM with hyperparam settings
-  # for DELAY_THRESHOLD in range(1, 11):
-  # start_time = time.time()
-  patterns, clusters = FCM(1, IM_Batch, 0.05, 0.3, 10, C_VALUE, ideal_patterns, oracle_batch, IM_Index)
-  # end_time = time.time()
+    # Run FCM with hyperparam settings
+    # for DELAY_THRESHOLD in range(1, 11):
+    # start_time = time.time()
+    if i != 0 and i % 3 == 0:
+      j += 1
+    patterns, clusters = FCM(1, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle_batch, IM_Index)
+    # end_time = time.time()
 
   # Evaluate the pattern mining & clustering results
   # pit = PIT(ideal_patterns, patterns, 0.05, 10)
