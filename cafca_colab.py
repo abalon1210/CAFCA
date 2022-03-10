@@ -29,9 +29,9 @@ from numpy.linalg import norm
 # import torch
 
 target_scenario = 'OP_SUCCESS_RATE'  # INPUT: OP_SUCCESS_RATE or COLLISION
-LOG_PATH = 'C:/Users/Hyun/IdeaProjects/StarPlateS/SoS_Extension/logs_full'
-V_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA'
-IDEAL_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA/Ideal'
+LOG_PATH = 'C:/Users/Administrator/IdeaProjects/StarPlateS/SoS_Extension/logs_full/collision_sample'
+V_PATH = 'C:/Users/Administrator/IdeaProjects/CAFCA'
+IDEAL_PATH = 'C:/Users/Administrator/IdeaProjects/CAFCA/Ideal'
 
 print('In Log Folder : ', os.listdir(LOG_PATH))
 
@@ -66,6 +66,7 @@ def IMGenerator():
           break
     if 'vehicleData' in strings[1]: # Extract env data
       env = [] # ======> Env = [state0, state1, state2, ...] ordered chronologically
+      ret = ""
       f = open(join(LOG_PATH,filename), 'r')
       lines = f.readlines()
       state = [] # A single state (i.e. item) in a log file => [time, veh1, veh1_lane, veh1_loc, veh2, veh2_lane, veh2_loc, ...]
@@ -98,8 +99,18 @@ def IMGenerator():
           continue
         if count == 0 and not len(state) == 0:
           env.append(copy.deepcopy(state))
+          ret += str(state[0]) + ": "
+          for prepro_env in EnvStatePreprocess(state):
+            ret += "["
+            for prepro_sensor in prepro_env:
+              ret += str(prepro_sensor) + ","
+            ret += "] "
+          ret += "\n"
           state = []
       f.close()
+      f2 = open(join(V_PATH, 'env_state' + str(curnt_id) + '.txt'), 'a')
+      f2.write(ret)
+      f2.close()
       env = np.array(env)
       im.append(copy.deepcopy(env))
     elif 'plnData' in strings[1]: # Extract interaction data
@@ -1086,7 +1097,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
             assign_flag = True
       if not assign_flag:
         for i in range(C_VALUE):
-          if memberships[i][k] > memberships[max_idx][k]:
+          if memberships[k][i] > memberships[k][max_idx]:
             max_idx = i
         clusters[max_idx].append(IM_[k])
     print("============== Logs Clustered")
@@ -1543,7 +1554,7 @@ def RunFCM(IM_, oracle):
   # Run FCM with hyperparam settings
   # for DELAY_THRESHOLD in range(1, 11):
   # start_time = time.time()
-  patterns, clusters = FCM(0, IM_Batch, 0.05, 0.3, 7, C_VALUE, ideal_patterns, oracle_batch, IM_Index)
+  patterns, clusters = FCM(0, IM_Batch, 0.05, 0.4, 3, C_VALUE, ideal_patterns, oracle_batch, IM_Index)
   # end_time = time.time()
 
   # Evaluate the pattern mining & clustering results
@@ -1569,18 +1580,18 @@ def main():
   # IMtoTxt(FIM, 'FailedInteractionModels.txt')
   # FIM = TxttoIM('FailedInteractionModels.txt')
 
-  f = open(join(V_PATH, target_scenario + '_Classification_Results_Test.csv'), encoding='UTF8')  # To check the Verification results
-  v_results = f.readlines()
-  f.close()
-
-  classification_data = []
-  for line in v_results:
-    line = line.replace(",,","")
-    line = line.replace("\n", "")
-    classification_data.append(line.split(','))
-  # RunSPADE(FIM)
-  # RunLogLiner(FIM, classification_data)
-  RunFCM(FIM, classification_data)
+  # f = open(join(V_PATH, target_scenario + '_Classification_Results_Test.csv'), encoding='UTF8')  # To check the Verification results
+  # v_results = f.readlines()
+  # f.close()
+  #
+  # classification_data = []
+  # for line in v_results:
+  #   line = line.replace(",,","")
+  #   line = line.replace("\n", "")
+  #   classification_data.append(line.split(','))
+  # # RunSPADE(FIM)
+  # # RunLogLiner(FIM, classification_data)
+  # RunFCM(FIM, classification_data)
 
 if __name__ == "__main__":
   main()
