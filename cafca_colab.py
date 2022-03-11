@@ -1022,7 +1022,9 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
   iterations = 0
 
   if cl_type == 1:
+    print("============== Item Comparison ==============")
     for k in range(len(IM_)):
+      print("Run for " + str(k) + "th iteration")
       for l in range(len(IM_)):
         if k == l:
           simvalues_item[k][l] = 1.0
