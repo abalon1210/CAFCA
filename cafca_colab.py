@@ -1050,7 +1050,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
   prev_memberships = np.random.rand(len(IM_), C_VALUE)
   iterations = 0
 
-  if cl_type == 1:
+  if cl_type == 1 or cl_type == 2: # 0: FCM 1: CAFCA 2: KS2M
     print("============== Item Comparison ==============")
     for k in range(len(IM_)):
       print("Run for " + str(k) + "th iteration")
@@ -1090,7 +1090,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
           break
       if max_flag and len(initial_sims) > 0 and sum(initial_sims)/len(initial_sims) < INIT_SIM_THRESHOLD: # If the average of the LCS_sim values of the models is non-acceptable, find other set of models
         break
-    elif cl_type == 1:
+    elif cl_type == 1 or cl_type == 2:
       index = np.unique(k_largest_index.ravel())[:C_VALUE]
       np.sort(index)
       for id in index:
@@ -1120,7 +1120,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
         patterns[i] = IM_[random.randint(0,len(IM_)-1)]
 
     # Similarity & Dissimilarity value calculation between patterns and models
-    if iterations == 0 and cl_type == 1:
+    if iterations == 0 and (cl_type == 1 or cl_type == 2):
       for k in range(len(IM_)):
         for j in range(C_VALUE):
           item_id = index[j]
@@ -1160,15 +1160,19 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
       #       memberships[j][k] = 1
       #     else:
       #       memberships[j][k] = 1 / temp
-    elif cl_type == 1: # CAFCA
+    else: # CAFCA & KS2M
       if iterations != 0:
         prev_memberships = copy.deepcopy(memberships)
       temp_numer = 0
       for k in range(len(IM_)):
         temp = []
         for i in range(C_VALUE):
-          val = math.pow(D(diss, prev_memberships, i, k, m, diss_item), 1 / (1 - m))
-          temp.append(val)
+          if cl_type == 1: # CAFCA
+            val = math.pow(D(diss, prev_memberships, i, k, m, diss_item), 1 / (1 - m))
+            temp.append(val)
+          elif cl_type == 2:
+            val = math.pow(D_KS2M(prev_memberships, i, k, m, diss_item), 1 / (1 - m))
+            temp.append(val)
         for j in range(C_VALUE):
             memberships[k][j] = temp[j] / sum(temp)
     print("============== Memberships Calculated")
@@ -1201,7 +1205,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
       patterns[j] = pattern
     print("============== Patterns Updated")
 
-    # Objective value calculation -> Basic FCM version
+    # Objective value calculation
     objs = 0.0
     if cl_type == 0: #FCM
       for j in range(C_VALUE):
@@ -1214,6 +1218,19 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
         for k in range(len(IM_)):
           val = math.pow(memberships[k][j], m)
           objs += val * math.pow(diss[k][j],2)
+          denom += val
+          for l in range(len(IM_)):
+            if k < l:
+              numer += val * math.pow(memberships[l][j],m) * math.pow(diss_item[k][l],2)
+            else:
+              numer += val * math.pow(memberships[l][j], m) * math.pow(diss_item[l][k],2)
+        objs += numer / denom
+    else: #KS2M
+      for j in range(C_VALUE):
+        denom = 0.0
+        numer = 0.0
+        for k in range(len(IM_)):
+          val = math.pow(memberships[k][j], m)
           denom += val
           for l in range(len(IM_)):
             if k < l:
@@ -1270,7 +1287,20 @@ def D(diss, prev_memberships, index_cluster, index_item, m, diss_item): #index_c
       numer += math.pow(prev_memberships[h][index_cluster], m) * math.pow((diss_item[h][index_item]), 2)
     else:
       numer += math.pow(prev_memberships[h][index_cluster], m) * math.pow((diss_item[index_item][h]), 2)
-    return ret + (numer/denom)
+  return ret + (numer/denom)
+
+def D_KS2M(prev_memberships, index_cluster, index_item, m, diss_item): #index_cluster: j , index_item: k
+  denom = 0.0
+  numer = 0.0
+  for h in range(len(diss_item)):
+    if h == index_item:
+      continue
+    denom += math.pow(prev_memberships[h][index_cluster], m)
+    if h < index_item:
+      numer += math.pow(prev_memberships[h][index_cluster], m) * math.pow((diss_item[h][index_item]), 2)
+    else:
+      numer += math.pow(prev_memberships[h][index_cluster], m) * math.pow((diss_item[index_item][h]), 2)
+  return numer/denom
 
 def IMExistChecker(im, cluster):
   ret = False
