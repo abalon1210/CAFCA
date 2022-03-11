@@ -108,9 +108,9 @@ def IMGenerator():
           ret += "\n"
           state = []
       f.close()
-      f2 = open(join(V_PATH, 'env_state' + str(curnt_id) + '.txt'), 'a')
-      f2.write(ret)
-      f2.close()
+      # f2 = open(join(V_PATH, 'env_state' + str(curnt_id) + '.txt'), 'a')
+      # f2.write(ret)
+      # f2.close()
       env = np.array(env)
       im.append(copy.deepcopy(env))
     elif 'plnData' in strings[1]: # Extract interaction data
