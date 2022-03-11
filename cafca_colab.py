@@ -28,8 +28,8 @@ from numpy import dot
 from numpy.linalg import norm
 # import torch
 
-target_scenario = 'OP_SUCCESS_RATE'  # INPUT: OP_SUCCESS_RATE or COLLISION
-LOG_PATH = 'C:/Users/Administrator/IdeaProjects/StarPlateS/SoS_Extension/logs_full/sample'
+target_scenario = 'COLLISION'  # INPUT: OP_SUCCESS_RATE or COLLISION
+LOG_PATH = 'C:/Users/Administrator/IdeaProjects/StarPlateS/SoS_Extension/logs_full'
 V_PATH = 'C:/Users/Administrator/IdeaProjects/CAFCA'
 IDEAL_PATH = 'C:/Users/Administrator/IdeaProjects/CAFCA/Ideal/Collision'
 
@@ -40,9 +40,20 @@ def IMGenerator():
   IM = [] # A set of all interaction models ======> IM = [im0, im1, im2, im3, ...]
   FIM = [] # A set of failed interaction models
   curnt_id = -1
+
   f = open(join(V_PATH, target_scenario+'_Verification_Results.csv')) # To check the Verification results
   v_results = f.readlines()
   f.close()
+
+  f = open(join(V_PATH, target_scenario + '_Classification_Results_Test.csv'), encoding='UTF8')  # To get the classification results
+  c_results = f.readlines()
+  f.close()
+  classification_data = []
+  for line in c_results:
+    line = line.replace(",,","")
+    line = line.replace("\n", "")
+    classification_data.append(line.split(','))
+
   im = [] # an interaction model ======> im = [file_id, P/F, Interaction, Env]
   for filename in os.listdir(LOG_PATH):
     if "plnData.txt" not in filename and "vehicleData.txt" not in filename:
@@ -60,10 +71,16 @@ def IMGenerator():
       curnt_id = int(strings[0])
       im.append(curnt_id) # Add the file id
       for line in v_results:
-        if '\\'+str(curnt_id)+'_' in line.split(',')[0]:  # Add the P/F results of the log file
-          p_f = line.split(',')[1]
-          im.append(p_f[:len(p_f)-1])
-          break
+        if target_scenario == "COLLISION":
+          if str(curnt_id) + '_' in line:
+            p_f = line.split(',')[1]
+            im.append(p_f)
+            break
+        else:
+          if '\\'+str(curnt_id)+'_' in line.split(',')[0]:  # Add the P/F results of the log file
+            p_f = line.split(',')[1]
+            im.append(p_f[:len(p_f)-1])
+            break
     if 'vehicleData' in strings[1]: # Extract env data
       env = [] # ======> Env = [state0, state1, state2, ...] ordered chronologically
       ret = ""
@@ -184,7 +201,7 @@ def IMGenerator():
       interaction = np.array(interaction)
       im.append(copy.deepcopy(interaction))
   # print(IM[1865]) # Random print of a single m
-  return IM, FIM
+  return IM, FIM, classification_data
 
 """## Interaction model txt Writer
 
@@ -1062,7 +1079,10 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
         else:
           simvalues_item[k][l] = 2
     diss_item = 1 - simvalues_item
-  k = 12
+  if target_scenario == "COLL":
+    k = 4
+  else:
+    k = 12
   k_largest_index = np.column_stack(np.unravel_index(np.argpartition(diss_item.ravel(),diss_item.size-k)[-k:], diss_item.shape))
   print("============== FCM Run ==============")
   while True: # Initial selection of C models from the whole models
@@ -1673,30 +1693,41 @@ def EvaluateF1P(oracle,index,cluster): #oracle: [[str]], index: [str], cluster: 
 
     return ret
 
-def RunFCM(IM_, oracle):
+def RunFCM(IM_, oracle, exp_type): # exp_type : 0 -> OSR 1 -> COLL
   # IM Selection (Random)
   nIM_ = np.array(IM_)
   j = 0
   for i in range(12):
-    np.random.shuffle(nIM_)
-    IM_Batch = nIM_[0:1000]
-    IM_Index = []
-    for im in IM_Batch:
-      IM_Index.append(im[0])
-    # C_VALUE setting codes by the randomly selelcted subset
-    C_VALUE = 0
-    oracle_batch = []
-    for cl in oracle:
-      cl_batch = []
-      assign_flag = False
+    if exp_type == 0:
+      np.random.shuffle(nIM_)
+      IM_Batch = nIM_[0:1000]
+      IM_Index = []
       for im in IM_Batch:
-        if str(im[0])+"_0" in cl:
-          assign_flag = True
-          cl_batch.append(im[0])
-      if assign_flag:
-        C_VALUE += 1
-      oracle_batch.append(copy.deepcopy(cl_batch))
-
+        IM_Index.append(im[0])
+      # C_VALUE setting codes by the randomly selelcted subset
+      C_VALUE = 0
+      oracle_batch = []
+      for cl in oracle:
+        cl_batch = []
+        assign_flag = False
+        for im in IM_Batch:
+          if str(im[0])+"_0" in cl:
+            assign_flag = True
+            cl_batch.append(im[0])
+        if assign_flag:
+          C_VALUE += 1
+        oracle_batch.append(copy.deepcopy(cl_batch))
+    else:
+      np.random.shuffle(nIM_)
+      IM_Batch = []
+      IM_Index = []
+      C_VALUE = 4
+      for im in nIM_:
+        for cl in oracle:
+          if str(im[0]) + "_0" in cl:
+            IM_Batch.append(im)
+            IM_Index.append(im[0])
+            break
     ideal_patterns = IdealPatternReader()
 
     # Run FCM with hyperparam settings
@@ -1704,7 +1735,10 @@ def RunFCM(IM_, oracle):
     # start_time = time.time()
     if i != 0 and i % 3 == 0:
       j += 1
-    patterns, clusters = FCM(1, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle_batch, IM_Index)
+    if exp_type == 0: # OSR
+      patterns, clusters = FCM(1, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle_batch, IM_Index)
+    elif exp_type == 1: # COLL
+      patterns, clusters = FCM(1, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle, IM_Index)
     # end_time = time.time()
 
   # Evaluate the pattern mining & clustering results
@@ -1725,23 +1759,14 @@ def RunFCM(IM_, oracle):
   # f.close()
 
 def main():
-  IM, FIM = IMGenerator()
+  IM, FIM, classification_data = IMGenerator()
   # IMtoTxt(IM,'InteractionModels.txt')
   # IMtoTxt(FIM, 'FailedInteractionModels.txt')
   # FIM = TxttoIM('FailedInteractionModels.txt')
 
-  f = open(join(V_PATH, target_scenario + '_Classification_Results_Test.csv'), encoding='UTF8')  # To check the Verification results
-  v_results = f.readlines()
-  f.close()
-
-  classification_data = []
-  for line in v_results:
-    line = line.replace(",,","")
-    line = line.replace("\n", "")
-    classification_data.append(line.split(','))
   # RunSPADE(FIM)
   # RunLogLiner(FIM, classification_data)
-  RunFCM(FIM, classification_data)
+  RunFCM(FIM, classification_data, 1)
 
 if __name__ == "__main__":
   main()
