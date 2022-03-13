@@ -40,9 +40,20 @@ def IMGenerator():
   IM = [] # A set of all interaction models ======> IM = [im0, im1, im2, im3, ...]
   FIM = [] # A set of failed interaction models
   curnt_id = -1
+
   f = open(join(V_PATH, target_scenario+'_Verification_Results.csv')) # To check the Verification results
   v_results = f.readlines()
   f.close()
+
+  f = open(join(V_PATH, target_scenario + '_Classification_Results_Test.csv'), encoding='UTF8')  # To get the classification results
+  c_results = f.readlines()
+  f.close()
+  classification_data = []
+  for line in c_results:
+    line = line.replace(",,","")
+    line = line.replace("\n", "")
+    classification_data.append(line.split(','))
+
   im = [] # an interaction model ======> im = [file_id, P/F, Interaction, Env]
   for filename in os.listdir(LOG_PATH):
     if "plnData.txt" not in filename and "vehicleData.txt" not in filename:
@@ -60,12 +71,19 @@ def IMGenerator():
       curnt_id = int(strings[0])
       im.append(curnt_id) # Add the file id
       for line in v_results:
-        if '\\'+str(curnt_id)+'_' in line.split(',')[0]:  # Add the P/F results of the log file
-          p_f = line.split(',')[1]
-          im.append(p_f[:len(p_f)-1])
-          break
+        if target_scenario == "COLLISION":
+          if str(curnt_id) + '_' in line:
+            p_f = line.split(',')[1]
+            im.append(p_f)
+            break
+        else:
+          if '\\'+str(curnt_id)+'_' in line.split(',')[0]:  # Add the P/F results of the log file
+            p_f = line.split(',')[1]
+            im.append(p_f[:len(p_f)-1])
+            break
     if 'vehicleData' in strings[1]: # Extract env data
       env = [] # ======> Env = [state0, state1, state2, ...] ordered chronologically
+      ret = ""
       f = open(join(LOG_PATH,filename), 'r')
       lines = f.readlines()
       state = [] # A single state (i.e. item) in a log file => [time, veh1, veh1_lane, veh1_loc, veh2, veh2_lane, veh2_loc, ...]
@@ -98,8 +116,18 @@ def IMGenerator():
           continue
         if count == 0 and not len(state) == 0:
           env.append(copy.deepcopy(state))
+          ret += str(state[0]) + ": "
+          for prepro_env in EnvStatePreprocess(state):
+            ret += "["
+            for prepro_sensor in prepro_env:
+              ret += str(prepro_sensor) + ","
+            ret += "] "
+          ret += "\n"
           state = []
       f.close()
+      # f2 = open(join(V_PATH, 'env_state' + str(curnt_id) + '.txt'), 'a')
+      # f2.write(ret)
+      # f2.close()
       env = np.array(env)
       im.append(copy.deepcopy(env))
     elif 'plnData' in strings[1]: # Extract interaction data
@@ -173,7 +201,7 @@ def IMGenerator():
       interaction = np.array(interaction)
       im.append(copy.deepcopy(interaction))
   # print(IM[1865]) # Random print of a single m
-  return IM, FIM
+  return IM, FIM, classification_data
 
 """## Interaction model txt Writer
 
@@ -244,7 +272,7 @@ def ESMIC(msg_a, msg_b, msg_a_prev, msg_b_prev, env_a, env_b, d_threshold, time_
         continue
       # print(state_a[0])
       # print(state_b[0])
-      env_sim.append(EnvStateCompare(state_a,state_b))
+      env_sim.append(EnvStateComparePIT(state_a,state_b))
   env_sim = np.array(env_sim)
   # print(env_sim)
   if np.nanmean(env_sim) < env_sim_threshold:
@@ -281,6 +309,24 @@ def EnvStateCompare(state_a, state_b): # Compare the identity of the two Env sta
           sim_values.append(cos_sim(base, np.array(distance_b[i:i+len(base)])))
   # print(sim_values)
   return float(np.nanmean(sim_values)) # nanmax -> nanmean
+
+def EnvStateComparePIT(state_a, state_b): # Compare the identity of the two Env states => [time, veh1, veh1_lane, veh1_loc, veh2, veh2_lane, veh2_loc, ...]
+  distance_a = np.array(state_a)
+  veh_b = EnvStatePreprocess(state_b)
+  # print(veh_a)
+  # print(veh_b)
+  sim_values = []
+  for distance_b in veh_b:
+    if len(distance_a) > len(distance_b):
+      base = np.array(distance_b)
+      for i in range(0,len(distance_a)-len(base)+1):
+        sim_values.append(cos_sim(base, np.array(distance_a[i:i+len(base)])))
+    else:
+      base = distance_a
+      for i in range(0,len(distance_b)-len(base)+1):
+        sim_values.append(cos_sim(base, np.array(distance_b[i:i+len(base)])))
+# print(sim_values)
+  return float(np.nanmax(sim_values))
 
 def cos_sim(A, B):
   return dot(A, B)/(norm(A)*norm(B))
@@ -977,7 +1023,7 @@ def FaultClassProcess():
             message.append(veh_roles[line_items[5]])
           # interaction.append(message) // TODO
       classFile.close()
-      # classLogs.append([int(strings[0]), 'FALSE', interaction]) // TODO
+        # classLogs.append([int(strings[0]), 'FALSE', interaction]) // TODO
 
 def LogFaultFlagger(IMs, faultClassLogs, N):
   corpus = []
@@ -1022,7 +1068,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
   prev_memberships = np.random.rand(len(IM_), C_VALUE)
   iterations = 0
 
-  if cl_type == 1:
+  if cl_type == 1 or cl_type == 2: # 0: FCM 1: CAFCA 2: KS2M
     print("============== Item Comparison ==============")
     for k in range(len(IM_)):
       print("Run for " + str(k) + "th iteration")
@@ -1034,7 +1080,10 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
         else:
           simvalues_item[k][l] = 2
     diss_item = 1 - simvalues_item
-  k = 12
+  if target_scenario == "COLL":
+    k = 4
+  else:
+    k = 12
   k_largest_index = np.column_stack(np.unravel_index(np.argpartition(diss_item.ravel(),diss_item.size-k)[-k:], diss_item.shape))
   print("============== FCM Run ==============")
   while True: # Initial selection of C models from the whole models
@@ -1062,7 +1111,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
           break
       if max_flag and len(initial_sims) > 0 and sum(initial_sims)/len(initial_sims) < INIT_SIM_THRESHOLD: # If the average of the LCS_sim values of the models is non-acceptable, find other set of models
         break
-    elif cl_type == 1:
+    elif cl_type == 1 or cl_type == 2:
       index = np.unique(k_largest_index.ravel())[:C_VALUE]
       np.sort(index)
       for id in index:
@@ -1092,7 +1141,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
         patterns[i] = IM_[random.randint(0,len(IM_)-1)]
 
     # Similarity & Dissimilarity value calculation between patterns and models
-    if iterations == 0 and cl_type == 1:
+    if iterations == 0 and (cl_type == 1 or cl_type == 2):
       for k in range(len(IM_)):
         for j in range(C_VALUE):
           item_id = index[j]
@@ -1132,15 +1181,19 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
       #       memberships[j][k] = 1
       #     else:
       #       memberships[j][k] = 1 / temp
-    elif cl_type == 1: # CAFCA
+    else: # CAFCA & KS2M
       if iterations != 0:
         prev_memberships = copy.deepcopy(memberships)
       temp_numer = 0
       for k in range(len(IM_)):
         temp = []
         for i in range(C_VALUE):
-          val = math.pow(D(diss, prev_memberships, i, k, m, diss_item), 1 / (1 - m))
-          temp.append(val)
+          if cl_type == 1: # CAFCA
+            val = math.pow(D(diss, prev_memberships, i, k, m, diss_item), 1 / (1 - m))
+            temp.append(val)
+          elif cl_type == 2:
+            val = math.pow(D_KS2M(prev_memberships, i, k, m, diss_item), 1 / (1 - m))
+            temp.append(val)
         for j in range(C_VALUE):
             memberships[k][j] = temp[j] / sum(temp)
     print("============== Memberships Calculated")
@@ -1173,7 +1226,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
       patterns[j] = pattern
     print("============== Patterns Updated")
 
-    # Objective value calculation -> Basic FCM version
+    # Objective value calculation
     objs = 0.0
     if cl_type == 0: #FCM
       for j in range(C_VALUE):
@@ -1186,6 +1239,19 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
         for k in range(len(IM_)):
           val = math.pow(memberships[k][j], m)
           objs += val * math.pow(diss[k][j],2)
+          denom += val
+          for l in range(len(IM_)):
+            if k < l:
+              numer += val * math.pow(memberships[l][j],m) * math.pow(diss_item[k][l],2)
+            else:
+              numer += val * math.pow(memberships[l][j], m) * math.pow(diss_item[l][k],2)
+        objs += numer / denom
+    else: #KS2M
+      for j in range(C_VALUE):
+        denom = 0.0
+        numer = 0.0
+        for k in range(len(IM_)):
+          val = math.pow(memberships[k][j], m)
           denom += val
           for l in range(len(IM_)):
             if k < l:
@@ -1242,7 +1308,20 @@ def D(diss, prev_memberships, index_cluster, index_item, m, diss_item): #index_c
       numer += math.pow(prev_memberships[h][index_cluster], m) * math.pow((diss_item[h][index_item]), 2)
     else:
       numer += math.pow(prev_memberships[h][index_cluster], m) * math.pow((diss_item[index_item][h]), 2)
-    return ret + (numer/denom)
+  return ret + (numer/denom)
+
+def D_KS2M(prev_memberships, index_cluster, index_item, m, diss_item): #index_cluster: j , index_item: k
+  denom = 0.0
+  numer = 0.0
+  for h in range(len(diss_item)):
+    if h == index_item:
+      continue
+    denom += math.pow(prev_memberships[h][index_cluster], m)
+    if h < index_item:
+      numer += math.pow(prev_memberships[h][index_cluster], m) * math.pow((diss_item[h][index_item]), 2)
+    else:
+      numer += math.pow(prev_memberships[h][index_cluster], m) * math.pow((diss_item[index_item][h]), 2)
+  return numer/denom
 
 def IMExistChecker(im, cluster):
   ret = False
@@ -1255,6 +1334,7 @@ def IdealPatternReader():
   ideals = []
   for filename in os.listdir(IDEAL_PATH):
     interaction = []  # ======> interaction = [message0, message1, message2, ...] ordered chronologically
+    env = [] # ==> [[time, [state0, state1, ..., state_n]], [time, [state0, ...]], ...]
     f = open(join(IDEAL_PATH,filename), 'r')
     lines = f.readlines()
     F_type = -1
@@ -1262,72 +1342,90 @@ def IdealPatternReader():
     veh_roles = {}
     for i in range(3, len(lines)):  # For each line in log file
       message = []
+      # ret_env = []
+      ret_state = []
       line = lines[i]
-      line = ' '.join(line.split())  # Preprocessing
-      line = line.replace(' -', '')
-      line_items = line.split(' ')
-      if 'MF_Leave' in line:  # FollowerLeave type checking for veh role analysis
-        split_count = 2
-      elif 'EF_Leave' in line:
-        split_count = 1
-      if len(line_items) > 5:  # For each message items => [time, command_sent, sender, sender_role, receiver, receiver_role] + weight
-        time = line_items[0]
-        message.append(time)
-        command_sent = line_items[4]
-        message.append(command_sent)
-        if command_sent == 'MERGE_REQ':  # Role managmenet code by each role changing CS-level operations
-          veh_roles[line_items[1]] = 'Leader'
-          if line_items[5] not in veh_roles.keys() or veh_roles[line_items[5]] != 'Left':
-            veh_roles[line_items[5]] = 'Leader'
-        elif command_sent == 'SPLIT_REQ':
-          if line_items[1] not in veh_roles.keys() or veh_roles[line_items[1]] != 'Left':
+      if ":" in line:
+        line_items = line.split(":")
+        # ret_env.append(line_items[0]) # time
+        line_items[1] = line_items[1].replace("[", "")
+        line_items[1] = line_items[1].replace("]", "")
+        line_items[1] = line_items[1].replace("\n", "")
+        line_items[1] = line_items[1].replace(" ", "")
+        states = line_items[1].split(",")
+        for state in states:
+          ret_state.append(int(state))
+        # ret_env.append(ret_state)
+      else:
+        line = ' '.join(line.split())  # Preprocessing
+        line = line.replace(' -', '')
+        line_items = line.split(' ')
+        if 'MF_Leave' in line:  # FollowerLeave type checking for veh role analysis
+          split_count = 2
+        elif 'EF_Leave' in line:
+          split_count = 1
+        if len(line_items) > 5:  # For each message items => [time, command_sent, sender, sender_role, receiver, receiver_role] + weight
+          time = line_items[0]
+          message.append(time)
+          command_sent = line_items[4]
+          message.append(command_sent)
+          if command_sent == 'MERGE_REQ':  # Role managmenet code by each role changing CS-level operations
             veh_roles[line_items[1]] = 'Leader'
-        elif command_sent == 'LEAVE_REQ':
-          if line_items[1] not in veh_roles.keys() or veh_roles[line_items[1]] != 'Left':
-            veh_roles[line_items[1]] = 'Left'
-          if line_items[5] not in veh_roles.keys() or veh_roles[line_items[5]] != 'Left':
-            veh_roles[line_items[5]] = 'Leader'
-        elif command_sent == 'VOTE_LEADER':
-          if line_items[1] not in veh_roles.keys() or veh_roles[line_items[1]] != 'Left':
-            veh_roles[line_items[1]] = 'Left'
-        # elif command_sent == 'ELECTED_LEADER':
-        #   if line_items[1] not in veh_roles.keys() or veh_roles[line_items[1]] != 'Left':
-        #     veh_roles[line_items[1]] = 'Leader'
-        elif command_sent == 'MERGE_DONE':
-          if line_items[1] not in veh_roles.keys() or veh_roles[line_items[1]] != 'Left':
-            veh_roles.pop(line_items[1])
-        elif command_sent == 'SPLIT_DONE':
-          split_count -= 1
-          if split_count != 0:  # Just SPLIT operation && the first SPLIT in MF-LEAVE && LEADER-LEAVE
             if line_items[5] not in veh_roles.keys() or veh_roles[line_items[5]] != 'Left':
               veh_roles[line_items[5]] = 'Leader'
-          elif split_count == 0:  # The last SPLIT in MF-LEAVE / EF-LEAVE
+          elif command_sent == 'SPLIT_REQ':
+            if line_items[1] not in veh_roles.keys() or veh_roles[line_items[1]] != 'Left':
+              veh_roles[line_items[1]] = 'Leader'
+          elif command_sent == 'LEAVE_REQ':
+            if line_items[1] not in veh_roles.keys() or veh_roles[line_items[1]] != 'Left':
+              veh_roles[line_items[1]] = 'Left'
             if line_items[5] not in veh_roles.keys() or veh_roles[line_items[5]] != 'Left':
-              veh_roles[line_items[5]] = 'Left'
-        sender = line_items[1]
-        message.append(sender)
-        if line_items[1] not in veh_roles.keys():
-          message.append('Follower')
-        else:
-          message.append(veh_roles[line_items[1]])
-        receiver = line_items[5]
-        message.append(receiver)
-        if line_items[5] not in veh_roles.keys():
-          message.append('Follower')
-        else:
-          message.append(veh_roles[line_items[5]])
-        if len(line_items) >= 10: # in Ideal pattern, some messages have weight
-          message.append(line_items[9])
+              veh_roles[line_items[5]] = 'Leader'
+          elif command_sent == 'VOTE_LEADER':
+            if line_items[1] not in veh_roles.keys() or veh_roles[line_items[1]] != 'Left':
+              veh_roles[line_items[1]] = 'Left'
+          # elif command_sent == 'ELECTED_LEADER':
+          #   if line_items[1] not in veh_roles.keys() or veh_roles[line_items[1]] != 'Left':
+          #     veh_roles[line_items[1]] = 'Leader'
+          elif command_sent == 'MERGE_DONE':
+            if line_items[1] not in veh_roles.keys() or veh_roles[line_items[1]] != 'Left':
+              veh_roles.pop(line_items[1])
+          elif command_sent == 'SPLIT_DONE':
+            split_count -= 1
+            if split_count != 0:  # Just SPLIT operation && the first SPLIT in MF-LEAVE && LEADER-LEAVE
+              if line_items[5] not in veh_roles.keys() or veh_roles[line_items[5]] != 'Left':
+                veh_roles[line_items[5]] = 'Leader'
+            elif split_count == 0:  # The last SPLIT in MF-LEAVE / EF-LEAVE
+              if line_items[5] not in veh_roles.keys() or veh_roles[line_items[5]] != 'Left':
+                veh_roles[line_items[5]] = 'Left'
+          sender = line_items[1]
+          message.append(sender)
+          if line_items[1] not in veh_roles.keys():
+            message.append('Follower')
+          else:
+            message.append(veh_roles[line_items[1]])
+          receiver = line_items[5]
+          message.append(receiver)
+          if line_items[5] not in veh_roles.keys():
+            message.append('Follower')
+          else:
+            message.append(veh_roles[line_items[5]])
+          if len(line_items) >= 10: # in Ideal pattern, some messages have weight
+            message.append(line_items[9])
 
       if len(message) != 0:
         interaction.append(copy.deepcopy(message))
+      # if len(ret_env) != 0:
+        # env.append(ret_env)
+      if len(ret_state) != 0:
+        env.append(ret_state)
     f.close()
     interaction = np.array(interaction)
     pattern = []
     pattern.append(filename)
     pattern.append("False")
     pattern.append(copy.deepcopy(interaction))
-    pattern.append([])
+    pattern.append(copy.deepcopy(env))
     ideals.append(copy.deepcopy(pattern))
   return np.array(ideals)
 
@@ -1341,13 +1439,18 @@ def PIT(ideal_patterns, patterns, d_threshold, oracle_batch):
       continue
     max_PIT = 0
     for idx_gen, gen_pattern in enumerate(patterns):
-      # if idx_gen in matched:
-      #   continue
+      #if idx_gen in matched:
+      #  continue
+      env_sim = []
       lcs = GetPatternSimWithoutEnv(id_pattern, gen_pattern, d_threshold)[0][2]
+      # lcs = GetPatternSim(id_pattern, gen_pattern, d_threshold)[0][2]
       if lcs is None:
         continue
-      if max_PIT < (len(lcs) / len(id_pattern[2])):
-        max_PIT = len(lcs) / len(id_pattern[2])
+      if len(id_pattern[3]) != 0:
+        for state_a, state_b in zip(id_pattern[3], gen_pattern[3]):
+            env_sim.append(EnvStateComparePIT(state_a, state_b))
+      if max_PIT < (len(lcs) / len(id_pattern[2])) * 0.8 + np.nanmean(env_sim) * 0.2:
+        max_PIT = (len(lcs) / len(id_pattern[2])) * 0.8 + np.nanmean(env_sim) * 0.2
         matched_id = idx_gen
     # matched.append(matched_id)
     ret_PITs.append(max_PIT)
@@ -1370,6 +1473,7 @@ def PITW(ideal_patterns, patterns, d_threshold, oracle_batch):
       if lcs is None:
         continue
       weight_lcs = 0
+      env_sim = []
       for message in lcs:
         if len(message) >= 7:
           weight_lcs += int(message[6])
@@ -1377,7 +1481,10 @@ def PITW(ideal_patterns, patterns, d_threshold, oracle_batch):
       for message in id_pattern[2]:
         if len(message) >= 7:
           weight_id += int(message[6])
-      PITW = (len(lcs) + weight_lcs) / (len(id_pattern[2]) + weight_id)
+      if len(id_pattern[3]) != 0:
+        for state_a, state_b in zip(id_pattern[3], gen_pattern[3]):
+          env_sim.append(EnvStateComparePIT(state_a, state_b))
+      PITW = ((len(lcs) + weight_lcs) / (len(id_pattern[2]) + weight_id)) * 0.8 + np.nanmean(env_sim) * 0.2
       if max_PITW < PITW:
         max_PITW = PITW
         matched_id = idx_gen
@@ -1587,30 +1694,41 @@ def EvaluateF1P(oracle,index,cluster): #oracle: [[str]], index: [str], cluster: 
 
     return ret
 
-def RunFCM(IM_, oracle):
+def RunFCM(IM_, oracle, exp_type): # exp_type : 0 -> OSR 1 -> COLL
   # IM Selection (Random)
   nIM_ = np.array(IM_)
   j = 0
   for i in range(12):
-    np.random.shuffle(nIM_)
-    IM_Batch = nIM_[0:100]
-    IM_Index = []
-    for im in IM_Batch:
-      IM_Index.append(im[0])
-    # C_VALUE setting codes by the randomly selelcted subset
-    C_VALUE = 0
-    oracle_batch = []
-    for cl in oracle:
-      cl_batch = []
-      assign_flag = False
+    if exp_type == 0:
+      np.random.shuffle(nIM_)
+      IM_Batch = nIM_[0:1000]
+      IM_Index = []
       for im in IM_Batch:
-        if str(im[0])+"_0" in cl:
-          assign_flag = True
-          cl_batch.append(im[0])
-      if assign_flag:
-        C_VALUE += 1
-      oracle_batch.append(copy.deepcopy(cl_batch))
-
+        IM_Index.append(im[0])
+      # C_VALUE setting codes by the randomly selelcted subset
+      C_VALUE = 0
+      oracle_batch = []
+      for cl in oracle:
+        cl_batch = []
+        assign_flag = False
+        for im in IM_Batch:
+          if str(im[0])+"_0" in cl:
+            assign_flag = True
+            cl_batch.append(im[0])
+        if assign_flag:
+          C_VALUE += 1
+        oracle_batch.append(copy.deepcopy(cl_batch))
+    else:
+      np.random.shuffle(nIM_)
+      IM_Batch = []
+      IM_Index = []
+      C_VALUE = 4
+      for im in nIM_:
+        for cl in oracle:
+          if str(im[0]) + "_0" in cl:
+            IM_Batch.append(im)
+            IM_Index.append(im[0])
+            break
     ideal_patterns = IdealPatternReader()
 
     # Run FCM with hyperparam settings
@@ -1618,7 +1736,10 @@ def RunFCM(IM_, oracle):
     # start_time = time.time()
     if i != 0 and i % 3 == 0:
       j += 1
-    patterns, clusters = FCM(1, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle_batch, IM_Index)
+    if exp_type == 0: # OSR
+      patterns, clusters = FCM(1, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle_batch, IM_Index)
+    elif exp_type == 1: # COLL
+      patterns, clusters = FCM(1, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle, IM_Index)
     # end_time = time.time()
 
   # Evaluate the pattern mining & clustering results
@@ -1639,23 +1760,14 @@ def RunFCM(IM_, oracle):
   # f.close()
 
 def main():
-  IM, FIM = IMGenerator()
+  IM, FIM, classification_data = IMGenerator()
   # IMtoTxt(IM,'InteractionModels.txt')
   # IMtoTxt(FIM, 'FailedInteractionModels.txt')
   # FIM = TxttoIM('FailedInteractionModels.txt')
 
-  f = open(join(V_PATH, target_scenario + '_Classification_Results_Test.csv'), encoding='UTF8')  # To check the Verification results
-  v_results = f.readlines()
-  f.close()
-
-  classification_data = []
-  for line in v_results:
-    line = line.replace(",,","")
-    line = line.replace("\n", "")
-    classification_data.append(line.split(','))
   # RunSPADE(FIM)
   # RunLogLiner(FIM, classification_data)
-  RunFCM(FIM, classification_data)
+  RunFCM(FIM, classification_data, 1)
 
 if __name__ == "__main__":
   main()
