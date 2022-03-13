@@ -429,7 +429,8 @@ def PatternExtractor(im_pattern, im_input, d_threshold):
   # if np.nanmean(env_sims) < 0.8: # env_sim_threshold
   #   env_ret = False
   # env_ret = True
-
+  if env_sims is None or len(env_sims) == 0:
+    return ret, pattern_env, 0
   return ret, pattern_env, sum(env_sims) / len(env_sims)
 
 def PatternExtractorWithoutEnv(im_pattern, im_input, d_threshold):
@@ -1340,15 +1341,15 @@ def PIT(ideal_patterns, patterns, d_threshold, oracle_batch):
       continue
     max_PIT = 0
     for idx_gen, gen_pattern in enumerate(patterns):
-      if idx_gen in matched:
-        continue
+      # if idx_gen in matched:
+      #   continue
       lcs = GetPatternSimWithoutEnv(id_pattern, gen_pattern, d_threshold)[0][2]
       if lcs is None:
         continue
       if max_PIT < (len(lcs) / len(id_pattern[2])):
         max_PIT = len(lcs) / len(id_pattern[2])
         matched_id = idx_gen
-    matched.append(matched_id)
+    # matched.append(matched_id)
     ret_PITs.append(max_PIT)
 
   return ret_PITs
@@ -1363,8 +1364,8 @@ def PITW(ideal_patterns, patterns, d_threshold, oracle_batch):
       continue
     max_PITW = 0
     for idx_gen, gen_pattern in enumerate(patterns):
-      if idx_gen in matched:
-        continue
+      # if idx_gen in matched:
+      #   continue
       lcs = GetPatternSimWithoutEnv(id_pattern, gen_pattern, d_threshold)[0][2]
       if lcs is None:
         continue
@@ -1380,7 +1381,7 @@ def PITW(ideal_patterns, patterns, d_threshold, oracle_batch):
       if max_PITW < PITW:
         max_PITW = PITW
         matched_id = idx_gen
-    matched.append(matched_id)
+    # matched.append(matched_id)
     ret_PITWs.append(max_PITW)
 
   return ret_PITWs
@@ -1592,7 +1593,7 @@ def RunFCM(IM_, oracle):
   j = 0
   for i in range(12):
     np.random.shuffle(nIM_)
-    IM_Batch = nIM_[0:1000]
+    IM_Batch = nIM_[0:100]
     IM_Index = []
     for im in IM_Batch:
       IM_Index.append(im[0])
