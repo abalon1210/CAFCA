@@ -1701,7 +1701,7 @@ def RunFCM(IM_, oracle, exp_type): # exp_type : 0 -> OSR 1 -> COLL
   for i in range(12):
     if exp_type == 0:
       np.random.shuffle(nIM_)
-      IM_Batch = nIM_[0:100]
+      IM_Batch = nIM_[0:1000]
       IM_Index = []
       for im in IM_Batch:
         IM_Index.append(im[0])
@@ -1767,7 +1767,7 @@ def main():
 
   # RunSPADE(FIM)
   # RunLogLiner(FIM, classification_data)
-  RunFCM(FIM, classification_data, 0) # 0 : OSR, 1 : COLL
+  RunFCM(FIM, classification_data, 1) # 0 : OSR, 1 : COLL
 
 if __name__ == "__main__":
   main()
