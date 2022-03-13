@@ -1701,7 +1701,7 @@ def RunFCM(IM_, oracle, exp_type): # exp_type : 0 -> OSR 1 -> COLL
   for i in range(12):
     if exp_type == 0:
       np.random.shuffle(nIM_)
-      IM_Batch = nIM_[0:1000]
+      IM_Batch = nIM_[0:100]
       IM_Index = []
       for im in IM_Batch:
         IM_Index.append(im[0])
@@ -1736,9 +1736,9 @@ def RunFCM(IM_, oracle, exp_type): # exp_type : 0 -> OSR 1 -> COLL
     # start_time = time.time()
     if i != 0 and i % 3 == 0:
       j += 1
-    if exp_type == 0: # OSR
+    if exp_type == 0: # OSR // 0: FCM, 1: CAFCA, 2:KS2M
       patterns, clusters = FCM(1, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle_batch, IM_Index)
-    elif exp_type == 1: # COLL
+    elif exp_type == 1: # COLL // 0: FCM, 1: CAFCA, 2:KS2M
       patterns, clusters = FCM(1, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle, IM_Index)
     # end_time = time.time()
 
@@ -1767,7 +1767,7 @@ def main():
 
   # RunSPADE(FIM)
   # RunLogLiner(FIM, classification_data)
-  RunFCM(FIM, classification_data, 1)
+  RunFCM(FIM, classification_data, 0) # 0 : OSR, 1 : COLL
 
 if __name__ == "__main__":
   main()
