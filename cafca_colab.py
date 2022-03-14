@@ -28,10 +28,10 @@ from numpy import dot
 from numpy.linalg import norm
 # import torch
 
-target_scenario = 'OP_SUCCESS_RATE'  # INPUT: OP_SUCCESS_RATE or COLLISION
+target_scenario = 'COLLISION'  # INPUT: OP_SUCCESS_RATE or COLLISION
 LOG_PATH = 'C:/Users/Administrator/IdeaProjects/StarPlateS/SoS_Extension/logs_full'
 V_PATH = 'C:/Users/Administrator/IdeaProjects/CAFCA'
-IDEAL_PATH = 'C:/Users/Administrator/IdeaProjects/CAFCA/Ideal'
+IDEAL_PATH = 'C:/Users/Administrator/IdeaProjects/CAFCA/Ideal/Collision'
 
 print('In Log Folder : ', os.listdir(LOG_PATH))
 
@@ -1760,7 +1760,8 @@ def RunFCM(IM_, oracle, exp_type): # exp_type : 0 -> OSR 1 -> COLL
   # f.close()
 
 def main():
-  IM, FIM, classification_data = IMGenerator()
+  ideal_patterns = IdealPatternReader()
+  # IM, FIM, classification_data = IMGenerator()
   # IMtoTxt(IM,'InteractionModels.txt')
   # IMtoTxt(FIM, 'FailedInteractionModels.txt')
   # FIM = TxttoIM('FailedInteractionModels.txt')
