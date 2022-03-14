@@ -1760,8 +1760,7 @@ def RunFCM(IM_, oracle, exp_type): # exp_type : 0 -> OSR 1 -> COLL
   # f.close()
 
 def main():
-  ideal_patterns = IdealPatternReader()
-  # IM, FIM, classification_data = IMGenerator()
+  IM, FIM, classification_data = IMGenerator()
   # IMtoTxt(IM,'InteractionModels.txt')
   # IMtoTxt(FIM, 'FailedInteractionModels.txt')
   # FIM = TxttoIM('FailedInteractionModels.txt')
