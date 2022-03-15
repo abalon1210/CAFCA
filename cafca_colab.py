@@ -395,7 +395,7 @@ def CAFCASimCal(im_pattern, im_input, d_threshold):
   return p * (len(generated_pattern[2]) / len(im_pattern[2])) + q * avg_env_sim
 
 def PatternExtractor(im_pattern, im_input, d_threshold):
-  if im_pattern is None or im_input is None or im_pattern[2] is None or im_input[2] is None:
+  if im_pattern is None or im_input is None or im_pattern[2] is None or im_input[2] is None or im_pattern[3] is None or im_input[3] is None:
     return None
   pattern = im_pattern[2]
   input = im_input[2]
@@ -534,8 +534,9 @@ def GetPattern(im_pattern, im_input, d_threshold, min_len_threshold):  # LCS pat
       if generated_pattern is None: # Don't need to check the other consecutive options if a None appears
         break
   max_LCS, max_env = GetMaxContentLCS(generated_lcs, generated_env)
-  if not max_LCS or len(max_LCS) < min_len_threshold:
+  if max_LCS is None or len(max_LCS) < min_len_threshold or max_env is None:
     max_LCS = im_pattern[2]
+    max_env = im_pattern[3]
   ret.append(im_pattern[0])
   ret.append(im_pattern[1])
   ret.append(max_LCS)
@@ -621,7 +622,7 @@ def GetMaxContentLCS(generated_lcs, generated_env):  # GetMaxContentLCS among th
   max_len = -1
   if not generated_lcs:
     return None, None
-  if generated_env:
+  if not generated_env is None:
     for idx, lcs_pattern in enumerate(generated_lcs):
       if not lcs_pattern:
         continue
@@ -1077,8 +1078,6 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
           simvalues_item[k][l] = 1.0
         elif k < l:
           simvalues_item[k][l] = CAFCASimCal(IM_[k], IM_[l], DELAY_THRESHOLD)
-        else:
-          simvalues_item[k][l] = 2
     diss_item = 1 - simvalues_item
   if target_scenario == "COLL":
     k = 4
@@ -1113,21 +1112,23 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
         break
     elif cl_type == 1 or cl_type == 2:
       index = np.unique(k_largest_index.ravel())[:C_VALUE]
+      print(simvalues_item)
+      print(k_largest_index)
       np.sort(index)
       for id in index:
         patterns.append(IM_[id])
       patterns = np.array(patterns)
-      for i in range(0, len(patterns)-1):
-        for j in range(i+1, len(patterns)):
-          if simvalues_item[index[i]][index[j]] > MAX_INIT_SIM_THRESHOLD: # If two of them are highly simialr, choose the other models
-            max_flag = False
-            break
-          initial_sims.append(simvalues_item[index[i]][index[j]])
-        if not max_flag:
-          initial_sims.clear()
-          break
-      if max_flag and len(initial_sims) > 0 and sum(initial_sims)/len(initial_sims) < INIT_SIM_THRESHOLD: # If the average of the LCS_sim values of the models is non-acceptable, find other set of models
-        break
+      # for i in range(0, len(patterns)-1):
+      #   for j in range(i+1, len(patterns)):
+      #     if simvalues_item[index[i]][index[j]] > MAX_INIT_SIM_THRESHOLD: # If two of them are highly simialr, choose the other models
+      #       max_flag = False
+      #       break
+      #     initial_sims.append(simvalues_item[index[i]][index[j]])
+      #   if not max_flag:
+      #     initial_sims.clear()
+      #     break
+      # if max_flag and len(initial_sims) > 0: #and sum(initial_sims)/len(initial_sims) < INIT_SIM_THRESHOLD: # If the average of the LCS_sim values of the models is non-acceptable, find other set of models
+      #   break
 
   print("============== Initial Patterns Selected ==============")
   prev_objs = -1 # Sum of Squared Errors for Fuzzy C-means clustering
@@ -1449,9 +1450,13 @@ def PIT(ideal_patterns, patterns, d_threshold, oracle_batch):
       if len(id_pattern[3]) != 0:
         for state_a, state_b in zip(id_pattern[3], gen_pattern[3]):
             env_sim.append(EnvStateComparePIT(state_a, state_b))
-      if max_PIT < (len(lcs) / len(id_pattern[2])) * 0.8 + np.nanmean(env_sim) * 0.2:
-        max_PIT = (len(lcs) / len(id_pattern[2])) * 0.8 + np.nanmean(env_sim) * 0.2
-        matched_id = idx_gen
+      if len(env_sim) != 0:
+        if max_PIT < (len(lcs) / len(id_pattern[2])) * 0.8 + np.nanmean(env_sim) * 0.2:
+          max_PIT = (len(lcs) / len(id_pattern[2])) * 0.8 + np.nanmean(env_sim) * 0.2
+          # matched_id = idx_gen
+    else:
+        if max_PIT < (len(lcs) / len(id_pattern[2])):
+          max_PIT = (len(lcs) / len(id_pattern[2]))
     # matched.append(matched_id)
     ret_PITs.append(max_PIT)
 
@@ -1484,10 +1489,13 @@ def PITW(ideal_patterns, patterns, d_threshold, oracle_batch):
       if len(id_pattern[3]) != 0:
         for state_a, state_b in zip(id_pattern[3], gen_pattern[3]):
           env_sim.append(EnvStateComparePIT(state_a, state_b))
-      PITW = ((len(lcs) + weight_lcs) / (len(id_pattern[2]) + weight_id)) * 0.8 + np.nanmean(env_sim) * 0.2
+      if len(env_sim) != 0:
+        PITW = ((len(lcs) + weight_lcs) / (len(id_pattern[2]) + weight_id)) * 0.8 + np.nanmean(env_sim) * 0.2
+      else:
+        PITW = ((len(lcs) + weight_lcs) / (len(id_pattern[2]) + weight_id))
       if max_PITW < PITW:
         max_PITW = PITW
-        matched_id = idx_gen
+        # matched_id = idx_gen
     # matched.append(matched_id)
     ret_PITWs.append(max_PITW)
 
