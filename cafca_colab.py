@@ -29,7 +29,7 @@ from numpy.linalg import norm
 # import torch
 
 target_scenario = 'COLLISION'  # INPUT: OP_SUCCESS_RATE or COLLISION
-LOG_PATH = 'C:/Users/Administrator/IdeaProjects/StarPlateS/SoS_Extension/logs_full'
+LOG_PATH = 'C:/Users/Administrator/IdeaProjects/StarPlateS/SoS_Extension'
 V_PATH = 'C:/Users/Administrator/IdeaProjects/CAFCA'
 IDEAL_PATH = 'C:/Users/Administrator/IdeaProjects/CAFCA/Ideal/Collision'
 
