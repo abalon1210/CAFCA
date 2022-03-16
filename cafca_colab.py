@@ -1116,6 +1116,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
       index = np.random.choice(IM_.shape[0], C_VALUE, replace=False)
       for id in index:
         patterns.append(IM_[id])
+      patterns = np.array(patterns)
       break
       # print(k_largest_index)
       # np.sort(index)
@@ -1160,6 +1161,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
           simvalues[k][j] = CAFCASimCal(patterns[j], IM_[k], DELAY_THRESHOLD)
     diss = 1 - simvalues
     print("============== Sim & Dissims Calculated")
+    # print(diss)
 
     # Membership calculation
     if cl_type == 0: # FCM
@@ -1202,6 +1204,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
         for j in range(C_VALUE):
             memberships[k][j] = temp[j] / sum(temp)
     print("============== Memberships Calculated")
+    # print(memberships)
 
     # Clustering
     clusters = [[] for j in range(C_VALUE)]
@@ -1219,6 +1222,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
             max_idx = i
         clusters[max_idx].append(IM_[k])
     print("============== Logs Clustered")
+    # print(clusters)
 
     # Pattern update
     patterns.fill(None)
@@ -1230,6 +1234,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
         # pattern = GetPatternWithoutEnv(pattern, clusters[j][i], DELAY_THRESHOLD, MIN_LEN_THRESHOLD)
       patterns[j] = pattern
     print("============== Patterns Updated")
+    print(patterns)
 
     # Objective value calculation
     objs = 0.0
@@ -1458,7 +1463,7 @@ def PIT(ideal_patterns, patterns, d_threshold, oracle_batch):
         if max_PIT < (len(lcs) / len(id_pattern[2])) * 0.8 + np.nanmean(env_sim) * 0.2:
           max_PIT = (len(lcs) / len(id_pattern[2])) * 0.8 + np.nanmean(env_sim) * 0.2
           # matched_id = idx_gen
-    else:
+      else:
         if max_PIT < (len(lcs) / len(id_pattern[2])):
           max_PIT = (len(lcs) / len(id_pattern[2]))
     # matched.append(matched_id)
