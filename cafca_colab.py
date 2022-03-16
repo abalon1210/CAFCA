@@ -1083,7 +1083,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
     k = 4
   else:
     k = 12
-  k_largest_index = np.column_stack(np.unravel_index(np.argpartition(diss_item.ravel(),diss_item.size-k)[-k:], diss_item.shape))
+  # k_largest_index = np.column_stack(np.unravel_index(np.argpartition(diss_item.ravel(),diss_item.size-k)[-k:], diss_item.shape))
   print("============== FCM Run ==============")
   while True: # Initial selection of C models from the whole models
     initial_sims = []
@@ -1111,13 +1111,17 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
       if max_flag and len(initial_sims) > 0 and sum(initial_sims)/len(initial_sims) < INIT_SIM_THRESHOLD: # If the average of the LCS_sim values of the models is non-acceptable, find other set of models
         break
     elif cl_type == 1 or cl_type == 2:
-      index = np.unique(k_largest_index.ravel())[:C_VALUE]
-      print(simvalues_item)
-      print(k_largest_index)
-      np.sort(index)
+      # index = np.unique(k_largest_index.ravel())[:C_VALUE]
+      print(diss_item)
+      index = np.random.choice(IM_.shape[0], C_VALUE, replace=False)
       for id in index:
         patterns.append(IM_[id])
-      patterns = np.array(patterns)
+      break
+      # print(k_largest_index)
+      # np.sort(index)
+      # for id in index:
+      #   patterns.append(IM_[id])
+      # patterns = np.array(patterns)
       # for i in range(0, len(patterns)-1):
       #   for j in range(i+1, len(patterns)):
       #     if simvalues_item[index[i]][index[j]] > MAX_INIT_SIM_THRESHOLD: # If two of them are highly simialr, choose the other models
