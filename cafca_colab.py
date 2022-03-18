@@ -1098,7 +1098,6 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
     #   if (item not in patterns).any():
     #     patterns.append(item)
     if cl_type == 0:
-      C_VALUE = 2
       index = np.random.choice(IM_.shape[0], C_VALUE, replace=False)
       for id in index:
         patterns.append(IM_[id])
