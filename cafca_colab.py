@@ -29,9 +29,9 @@ from numpy.linalg import norm
 # import torch
 
 target_scenario = 'COLLISION'  # INPUT: OP_SUCCESS_RATE or COLLISION
-LOG_PATH = 'C:/Users/Administrator/IdeaProjects/StarPlateS/SoS_Extension'
-V_PATH = 'C:/Users/Administrator/IdeaProjects/CAFCA'
-IDEAL_PATH = 'C:/Users/Administrator/IdeaProjects/CAFCA/Ideal/Collision'
+LOG_PATH = 'C:/Users/Hyun/IdeaProjects/StarPlateS/SoS_Extension/logs_full'
+V_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA'
+IDEAL_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA/Ideal/Collision'
 
 print('In Log Folder : ', os.listdir(LOG_PATH))
 
@@ -1098,6 +1098,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
     #   if (item not in patterns).any():
     #     patterns.append(item)
     if cl_type == 0:
+      C_VALUE = 2
       index = np.random.choice(IM_.shape[0], C_VALUE, replace=False)
       for id in index:
         patterns.append(IM_[id])
@@ -1459,7 +1460,7 @@ def PIT(ideal_patterns, patterns, d_threshold, oracle_batch):
       if len(id_pattern[3]) != 0:
         for state_a, state_b in zip(id_pattern[3], gen_pattern[3]):
             env_sim.append(EnvStateComparePIT(state_a, state_b))
-      if len(env_sim) == 0:
+      if len(env_sim) != 0:
         if max_PIT < (len(lcs) / len(id_pattern[2])) * 0.8 + np.nanmean(env_sim) * 0.2:
           max_PIT = (len(lcs) / len(id_pattern[2])) * 0.8 + np.nanmean(env_sim) * 0.2
           # matched_id = idx_gen
