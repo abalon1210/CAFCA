@@ -389,8 +389,8 @@ def Quantification(distance): # 5: Very far / 4: Far / 3: Appropriate / 2: Close
 # Inputs: two models (pattern and input), d_threshold
 # Outputs: The most critical LCS among possible LCS generation sets, the LCS similarity value with the pattern and input models.
 def CAFCASimCal(im_pattern, im_input, d_threshold):
-  p = 0.8
-  q = 0.2
+  p = 0.5
+  q = 0.5
   generated_pattern, avg_env_sim = GetPatternSim(im_pattern, im_input, d_threshold)
   # generated_pattern, avg_env_sim = GetPatternSimWithoutEnv(im_pattern, im_input, d_threshold)
   # return p * (len(generated_pattern[2]) / (len(im_pattern[2]) * len(im_input[2]))) + q * avg_env_sim
@@ -1461,8 +1461,8 @@ def PIT(ideal_patterns, patterns, d_threshold, oracle_batch):
         for state_a, state_b in zip(id_pattern[3], gen_pattern[3]):
             env_sim.append(EnvStateComparePIT(state_a, state_b))
       if len(env_sim) != 0:
-        if max_PIT < (len(lcs) / len(id_pattern[2])) * 0.8 + np.nanmean(env_sim) * 0.2:
-          max_PIT = (len(lcs) / len(id_pattern[2])) * 0.8 + np.nanmean(env_sim) * 0.2
+        if max_PIT < (len(lcs) / len(id_pattern[2])) * 0.5 + np.nanmean(env_sim) * 0.5:
+          max_PIT = (len(lcs) / len(id_pattern[2])) * 0.5 + np.nanmean(env_sim) * 0.5
           # matched_id = idx_gen
       else:
         if max_PIT < (len(lcs) / len(id_pattern[2])):
@@ -1500,7 +1500,7 @@ def PITW(ideal_patterns, patterns, d_threshold, oracle_batch):
         for state_a, state_b in zip(id_pattern[3], gen_pattern[3]):
           env_sim.append(EnvStateComparePIT(state_a, state_b))
       if len(env_sim) != 0:
-        PITW = ((len(lcs) + weight_lcs) / (len(id_pattern[2]) + weight_id)) * 0.8 + np.nanmean(env_sim) * 0.2
+        PITW = ((len(lcs) + weight_lcs) / (len(id_pattern[2]) + weight_id)) * 0.5 + np.nanmean(env_sim) * 0.5
       else:
         PITW = ((len(lcs) + weight_lcs) / (len(id_pattern[2]) + weight_id))
       if max_PITW < PITW:
@@ -1769,7 +1769,7 @@ def RunFCM(IM_, oracle, exp_type): # exp_type : 0 -> OSR 1 -> COLL
     if exp_type == 0: # OSR // 0: FCM, 1: CAFCA, 2:KS2M
       patterns, clusters = FCM(1, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle_batch, IM_Index)
     elif exp_type == 1: # COLL // 0: FCM, 1: CAFCA, 2:KS2M
-      patterns, clusters = FCM(1, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle_batch, IM_Index)
+      patterns, clusters = FCM(0, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle_batch, IM_Index)
     # end_time = time.time()
 
   # Evaluate the pattern mining & clustering results
