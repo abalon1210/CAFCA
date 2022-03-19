@@ -666,6 +666,8 @@ def GetMaxContentLCS(generated_lcs, generated_env):  # GetMaxContentLCS among th
 def InteractionSeqSlicer(im,time):  # Only slice the message sequences by the time TODO: If necessary, cover Env slicing too?
   if time == 25:
     return im
+  if im[2] is None:
+    return im
   ret = copy.deepcopy(im)
   ret_interaction = None
   for idx, message in enumerate(im[2]):
