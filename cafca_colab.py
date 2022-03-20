@@ -677,6 +677,103 @@ def InteractionSeqSlicer(im,time):  # Only slice the message sequences by the ti
   ret[2] = ret_interaction
   return ret
 
+def MTSPattern(im_pattern, im_input, p, q, min_len_threshold):
+  TIME_WINDOW_SIZE = 20.0
+  max_tw = None
+  max_sim = -1
+  for s_time_pattern in range(25.0, 80.0):
+    for s_time_input in range(25.0, 80.0):
+      pattern_tw = InteractionTWSlicer(im_pattern, s_time_pattern, s_time_pattern + TIME_WINDOW_SIZE)
+      input_tw = InteractionTWSlicer(im_input, s_time_input, s_time_input+TIME_WINDOW_SIZE)
+      mts_sim = MTSSim(pattern_tw, input_tw, p,q)
+      if mts_sim > max_sim:
+        max_tw = copy.deepcopy(pattern_tw)
+  if max_tw is None or len(max_tw) < min_len_threshold:
+    max_tw = im_pattern
+  return max_tw
+
+def MTS(im_pattern, im_input, p, q):
+  TIME_WINDOW_SIZE = 20.0
+  max_tw = None
+  max_sim = -1
+  for s_time_pattern in range(25.0, 80.0):
+    for s_time_input in range(25.0, 80.0):
+      pattern_tw = InteractionTWSlicer(im_pattern, s_time_pattern, s_time_pattern + TIME_WINDOW_SIZE)
+      input_tw = InteractionTWSlicer(im_input, s_time_input, s_time_input+TIME_WINDOW_SIZE)
+      mts_sim = MTSSim(pattern_tw, input_tw, p,q)
+      if mts_sim > max_sim:
+        max_tw = copy.deepcopy(pattern_tw)
+        max_sim = mts_sim
+
+  return max_sim
+
+def MTSSim(im_pattern_tw, im_input_tw, p, q):
+  # Message identity counting
+  # pattern_prev_msg = None
+  # input_prev_msg = None
+  message_identity_count = 0
+  input_matched_t = []
+  pattern_matched_t = []
+  for (message_p, message_i) in zip(im_pattern_tw[2], im_input_tw[2]):
+    if MCT(message_p, message_i):
+      message_identity_count += 1
+      input_matched_t.append(round(float(message_p[0]), 1))
+      pattern_matched_t.append(round(float(message_i[0]), 1))
+
+  if message_identity_count == 0 or len(input_matched_t) == 0 or len(pattern_matched_t) == 0:
+    return 0
+  time_window = 1.0
+  input_env = []
+  pattern_env = []
+  env_sims = []
+  for state_b in im_input_tw[3]:
+    if float(state_b[0]) < input_matched_t[j] - time_window:
+      continue
+    elif float(state_b[0]) > input_matched_t[j]:
+      break
+    input_env.append(state_b)
+    if float(state_b[0]) == input_matched_t[j]:
+      for j in range(len(input_matched_t)):
+        if input_matched_t[j] < float(input_env[-1][0]):
+          continue
+        elif input_matched_t[j] > float(input_env[-1][0]):
+          break
+      if j > len(input_matched_t) - 1:
+        break
+
+  for state_a in im_pattern_tw[3]:
+    if float(state_a[0]) <= pattern_matched_t[i] - time_window:
+      continue
+    elif float(state_a[0]) > pattern_matched_t[i]:
+      break
+    pattern_env.append(state_a)
+    if float(state_a[0]) == pattern_matched_t[i]:
+      for i in range(len(pattern_matched_t)):
+        if pattern_matched_t[i] < float(pattern_env[-1][0]):
+          continue
+        elif pattern_matched_t[i] > float(pattern_env[-1][0]):
+          break
+      if i > len(pattern_matched_t) - 1:
+        break
+
+  for (state_a, state_b) in zip(pattern_env, input_env):
+    env_sims.append(EnvStateCompare(state_a, state_b))
+
+  return (message_identity_count / len(im_pattern_tw[2])) * p + (sum(env_sims) / len(env_sims)) * q
+
+def InteractionTWSlicer(im, s_time, e_time):
+  if im[2] is None:
+    return im
+  ret = copy.deepcopy(im)
+  ret_interaction = None
+  for message in im[2]:
+    if float(message[0]) >= s_time:
+      ret_interaction.append(message)
+    if float(message[0]) > e_time:
+      break
+  ret[2] = ret_interaction
+  return ret
+
 """### SPADE Pattern Mining
 
 """
@@ -1116,7 +1213,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
           break
       if max_flag and len(initial_sims) > 0 and sum(initial_sims)/len(initial_sims) < INIT_SIM_THRESHOLD: # If the average of the LCS_sim values of the models is non-acceptable, find other set of models
         break
-    elif cl_type == 1 or cl_type == 2:
+    else:
       index = np.random.choice(IM_.shape[0], C_VALUE, replace=False)
       for id in index:
         patterns.append(IM_[id])
@@ -1161,15 +1258,21 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
             simvalues[k][j] = simvalues_item[item_id][k]
           else:
             simvalues[k][j] = simvalues_item[k][item_id]
-    else:
+    elif cl_type == 0:
       for k in range(len(IM_)):
         for j in range(C_VALUE):
           simvalues[k][j] = CAFCASimCal(patterns[j], IM_[k], DELAY_THRESHOLD)
+    else:
+      p = 0.8
+      q = 0.2
+      for k in range(len(IM_)):
+        for j in range(C_VALUE):
+          simvalues[k][j] = MTS(patterns[j], IM_[k], p, q)
     diss = 1 - simvalues
     print("============== Sim & Dissims Calculated")
 
     # Membership calculation
-    if cl_type == 0: # FCM
+    if cl_type == 0 or cl_type == 3: # FCM
       for k in range(len(IM_)):
         temp = np.zeros(C_VALUE)
         for j in range(C_VALUE):
@@ -1229,18 +1332,28 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
 
     # Pattern update
     patterns.fill(None)
-    for j in range(C_VALUE):
-      pattern = None
-      random.shuffle(clusters[j]) # To make variation for the generated patterns
-      for i in range(len(clusters[j])):
-        pattern = GetPattern(pattern, clusters[j][i], DELAY_THRESHOLD, MIN_LEN_THRESHOLD)
-        # pattern = GetPatternWithoutEnv(pattern, clusters[j][i], DELAY_THRESHOLD, MIN_LEN_THRESHOLD)
-      patterns[j] = pattern
+    if cl_type == 3:
+      p = 0.8
+      q = 0.2
+      for j in range(C_VALUE):
+        pattern = None
+        random.shuffle(clusters[j]) # To make variation for the generated patterns
+        for i in range(len(clusters[j])):
+          pattern = MTSPattern(pattern, clusters[j][i], p, q, MIN_LEN_THRESHOLD)
+        patterns[j] = pattern
+    else:
+      for j in range(C_VALUE):
+        pattern = None
+        random.shuffle(clusters[j]) # To make variation for the generated patterns
+        for i in range(len(clusters[j])):
+          pattern = GetPattern(pattern, clusters[j][i], DELAY_THRESHOLD, MIN_LEN_THRESHOLD)
+          # pattern = GetPatternWithoutEnv(pattern, clusters[j][i], DELAY_THRESHOLD, MIN_LEN_THRESHOLD)
+        patterns[j] = pattern
     print("============== Patterns Updated")
 
     # Objective value calculation
     objs = 0.0
-    if cl_type == 0: #FCM
+    if cl_type == 0 or cl_type == 3: #FCM
       for j in range(C_VALUE):
         for k in range(len(IM_)):
          objs += math.pow(memberships[k][j], m) * math.pow(diss[k][j],2)
@@ -1769,8 +1882,8 @@ def RunFCM(IM_, oracle, exp_type): # exp_type : 0 -> OSR 1 -> COLL
       j += 1
     if exp_type == 0: # OSR // 0: FCM, 1: CAFCA, 2:KS2M
       patterns, clusters = FCM(1, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle_batch, IM_Index)
-    elif exp_type == 1: # COLL // 0: FCM, 1: CAFCA, 2:KS2M
-      patterns, clusters = FCM(0, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle_batch, IM_Index)
+    elif exp_type == 1: # COLL // 0: FCM, 1: CAFCA, 2:KS2M, 3:MTS + FCM
+      patterns, clusters = FCM(3, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle_batch, IM_Index)
     # end_time = time.time()
 
   # Evaluate the pattern mining & clustering results
