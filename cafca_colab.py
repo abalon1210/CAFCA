@@ -29,9 +29,9 @@ from numpy.linalg import norm
 # import torch
 
 target_scenario = 'COLLISION'  # INPUT: OP_SUCCESS_RATE or COLLISION
-LOG_PATH = 'C:/Users/Hyun/IdeaProjects/StarPlateS/SoS_Extension/logs_full'
-V_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA'
-IDEAL_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA/Ideal/Collision'
+LOG_PATH = 'C:/Users/Administrator/IdeaProjects/StarPlateS/SoS_Extension/logs_full'
+V_PATH = 'C:/Users/Administrator/IdeaProjects/CAFCA'
+IDEAL_PATH = 'C:/Users/Administrator/IdeaProjects/CAFCA/Ideal/Collision'
 
 print('In Log Folder : ', os.listdir(LOG_PATH))
 
@@ -389,8 +389,8 @@ def Quantification(distance): # 5: Very far / 4: Far / 3: Appropriate / 2: Close
 # Inputs: two models (pattern and input), d_threshold
 # Outputs: The most critical LCS among possible LCS generation sets, the LCS similarity value with the pattern and input models.
 def CAFCASimCal(im_pattern, im_input, d_threshold):
-  p = 0.5
-  q = 0.5
+  p = 0.2
+  q = 0.8
   generated_pattern, avg_env_sim = GetPatternSim(im_pattern, im_input, d_threshold)
   # generated_pattern, avg_env_sim = GetPatternSimWithoutEnv(im_pattern, im_input, d_threshold)
   # return p * (len(generated_pattern[2]) / (len(im_pattern[2]) * len(im_input[2]))) + q * avg_env_sim
@@ -681,10 +681,10 @@ def MTSPattern(im_pattern, im_input, p, q, min_len_threshold):
   TIME_WINDOW_SIZE = 20.0
   max_tw = None
   max_sim = -1
-  for s_time_pattern in range(25.0, 80.0):
-    for s_time_input in range(25.0, 80.0):
-      pattern_tw = InteractionTWSlicer(im_pattern, s_time_pattern, s_time_pattern + TIME_WINDOW_SIZE)
-      input_tw = InteractionTWSlicer(im_input, s_time_input, s_time_input+TIME_WINDOW_SIZE)
+  for s_time_pattern in range(25, 80):
+    for s_time_input in range(25, 80):
+      pattern_tw = InteractionTWSlicer(im_pattern, float(s_time_pattern), float(s_time_pattern) + TIME_WINDOW_SIZE)
+      input_tw = InteractionTWSlicer(im_input, float(s_time_pattern), float(s_time_pattern) + TIME_WINDOW_SIZE)
       mts_sim = MTSSim(pattern_tw, input_tw, p,q)
       if mts_sim > max_sim:
         max_tw = copy.deepcopy(pattern_tw)
@@ -696,10 +696,10 @@ def MTS(im_pattern, im_input, p, q):
   TIME_WINDOW_SIZE = 20.0
   max_tw = None
   max_sim = -1
-  for s_time_pattern in range(25.0, 80.0):
-    for s_time_input in range(25.0, 80.0):
-      pattern_tw = InteractionTWSlicer(im_pattern, s_time_pattern, s_time_pattern + TIME_WINDOW_SIZE)
-      input_tw = InteractionTWSlicer(im_input, s_time_input, s_time_input+TIME_WINDOW_SIZE)
+  for s_time_pattern in range(25, 80):
+    for s_time_input in range(25, 80):
+      pattern_tw = InteractionTWSlicer(im_pattern, float(s_time_pattern), float(s_time_pattern) + TIME_WINDOW_SIZE)
+      input_tw = InteractionTWSlicer(im_input, float(s_time_pattern), float(s_time_pattern) + TIME_WINDOW_SIZE)
       mts_sim = MTSSim(pattern_tw, input_tw, p,q)
       if mts_sim > max_sim:
         max_tw = copy.deepcopy(pattern_tw)
@@ -723,6 +723,8 @@ def MTSSim(im_pattern_tw, im_input_tw, p, q):
   if message_identity_count == 0 or len(input_matched_t) == 0 or len(pattern_matched_t) == 0:
     return 0
   time_window = 1.0
+  i = 0
+  j = 0
   input_env = []
   pattern_env = []
   env_sims = []
@@ -762,15 +764,16 @@ def MTSSim(im_pattern_tw, im_input_tw, p, q):
   return (message_identity_count / len(im_pattern_tw[2])) * p + (sum(env_sims) / len(env_sims)) * q
 
 def InteractionTWSlicer(im, s_time, e_time):
-  if im[2] is None:
+  if im is None or im[2] is None:
     return im
   ret = copy.deepcopy(im)
-  ret_interaction = None
+  ret_interaction = []
   for message in im[2]:
-    if float(message[0]) >= s_time:
-      ret_interaction.append(message)
     if float(message[0]) > e_time:
       break
+    if float(message[0]) >= s_time:
+      ret_interaction.append(message)
+  ret_interaction = np.array(ret_interaction)
   ret[2] = ret_interaction
   return ret
 
@@ -1240,7 +1243,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
 
   print("============== Initial Patterns Selected ==============")
   prev_objs = -1 # Sum of Squared Errors for Fuzzy C-means clustering
-  f = open(join(V_PATH, "FCM_1.csv"), 'a')
+  f = open(join(V_PATH, "COLL_MTS_p_8_q_2.csv"), 'a')
   while iterations < MAX_ITERATION:
     print("============== Iterations: " + str(iterations))
     start_time = time.time()
@@ -1250,7 +1253,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
         patterns[i] = IM_[random.randint(0,len(IM_)-1)]
 
     # Similarity & Dissimilarity value calculation between patterns and models
-    if iterations == 0 and (cl_type == 1 or cl_type == 2):
+    if (cl_type == 1 or cl_type == 2) and iterations == 0:
       for k in range(len(IM_)):
         for j in range(C_VALUE):
           item_id = index[j]
@@ -1262,10 +1265,11 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
       for k in range(len(IM_)):
         for j in range(C_VALUE):
           simvalues[k][j] = CAFCASimCal(patterns[j], IM_[k], DELAY_THRESHOLD)
-    else:
+    elif cl_type == 3:
       p = 0.8
       q = 0.2
       for k in range(len(IM_)):
+        print("Run for " + str(k) + "th iteration")
         for j in range(C_VALUE):
           simvalues[k][j] = MTS(patterns[j], IM_[k], p, q)
     diss = 1 - simvalues
@@ -1575,13 +1579,20 @@ def PIT(ideal_patterns, patterns, d_threshold, oracle_batch):
         for state_a, state_b in zip(id_pattern[3], gen_pattern[3]):
             env_sim.append(EnvStateComparePIT(state_a, state_b))
       if len(env_sim) != 0:
-        if max_PIT < (len(lcs) / len(id_pattern[2])) * 0.5 + np.nanmean(env_sim) * 0.5:
-          max_PIT = (len(lcs) / len(id_pattern[2])) * 0.5 + np.nanmean(env_sim) * 0.5
+        if max_PIT < (len(lcs) / len(id_pattern[2])) * 0.8 + np.nanmean(env_sim) * 0.2:
+          max_PIT = (len(lcs) / len(id_pattern[2])) * 0.8 + np.nanmean(env_sim) * 0.2
           # matched_id = idx_gen
       else:
         if max_PIT < (len(lcs) / len(id_pattern[2])):
           max_PIT = (len(lcs) / len(id_pattern[2]))
     # matched.append(matched_id)
+    if max_PIT == 0:
+      print(lcs)
+      print(env_sim)
+      print(id_pattern[2])
+      print(id_pattern[3])
+      print(gen_pattern[2])
+      print(gen_pattern[3])
     ret_PITs.append(max_PIT)
 
   return ret_PITs
@@ -1614,13 +1625,20 @@ def PITW(ideal_patterns, patterns, d_threshold, oracle_batch):
         for state_a, state_b in zip(id_pattern[3], gen_pattern[3]):
           env_sim.append(EnvStateComparePIT(state_a, state_b))
       if len(env_sim) != 0:
-        PITW = ((len(lcs) + weight_lcs) / (len(id_pattern[2]) + weight_id)) * 0.5 + np.nanmean(env_sim) * 0.5
+        PITW = ((len(lcs) + weight_lcs) / (len(id_pattern[2]) + weight_id)) * 0.8 + np.nanmean(env_sim) * 0.2
       else:
         PITW = ((len(lcs) + weight_lcs) / (len(id_pattern[2]) + weight_id))
       if max_PITW < PITW:
         max_PITW = PITW
         # matched_id = idx_gen
     # matched.append(matched_id)
+    if max_PIT == 0:
+      print(lcs)
+      print(env_sim)
+      print(id_pattern[2])
+      print(id_pattern[3])
+      print(gen_pattern[2])
+      print(gen_pattern[3])
     ret_PITWs.append(max_PITW)
 
   return ret_PITWs
@@ -1831,7 +1849,7 @@ def RunFCM(IM_, oracle, exp_type): # exp_type : 0 -> OSR 1 -> COLL
   # IM Selection (Random)
   nIM_ = np.array(IM_)
   j = 0
-  for i in range(12):
+  for i in range(0,4):
     if exp_type == 0:
       np.random.shuffle(nIM_)
       IM_Batch = nIM_[0:1000]
