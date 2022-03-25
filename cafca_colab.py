@@ -29,7 +29,7 @@ from numpy.linalg import norm
 # import torch
 
 target_scenario = 'OP_SUCCESS_RATE'  # INPUT: OP_SUCCESS_RATE or COLLISION
-LOG_PATH = 'C:/Users/Hyun/IdeaProjects/StarPlateS/SoS_Extension/logs_full'
+LOG_PATH = 'C:/Users/Hyun/IdeaProjects/StarPlateS/SoS_Extension/logs_full/sample'
 V_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA'
 IDEAL_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA/Ideal'
 
@@ -385,8 +385,8 @@ def Quantification(distance): # 5: Very far / 4: Far / 3: Appropriate / 2: Close
 # Inputs: two models (pattern and input), d_threshold
 # Outputs: The most critical LCS among possible LCS generation sets, the LCS similarity value with the pattern and input models.
 def CAFCASimCal(im_pattern, im_input, d_threshold):
-  p = 0.5
-  q = 0.5
+  p = 0.8
+  q = 0.2
   generated_pattern, avg_env_sim = GetPatternSim(im_pattern, im_input, d_threshold)
   # generated_pattern, avg_env_sim = GetPatternSimWithoutEnv(im_pattern, im_input, d_threshold)
   # return p * (len(generated_pattern[2]) / (len(im_pattern[2]) * len(im_input[2]))) + q * avg_env_sim
@@ -1286,7 +1286,16 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
     pit = PIT(ideal_patterns, patterns, 0.05, oracle_batch)
     pitw = PITW(ideal_patterns, patterns, 0.05, oracle_batch)
     f1p = EvaluateF1P(oracle_batch, IM_Index, clusters)
-    print("d_threshold:" + str(DELAY_THRESHOLD) + ", " + "sim_threshold:" + str(SIM_THRESHOLD) + ", " + "iterations:" + str(iterations) + ", objs:" + str(objs) + "==> PIT:" + str(sum(pit)) + ", PITW:" + str(sum(pitw)) + ", F1P:" + str(f1p[-1]) + ", Time:" + str((end_time - start_time)))
+    pit_sum = 0
+    for val in pit:
+      if not val is None:
+        pit_sum += val
+
+    pitw_sum = 0
+    for val in pitw:
+      if not val is None:
+        pitw_sum += val
+    print("d_threshold:" + str(DELAY_THRESHOLD) + ", " + "sim_threshold:" + str(SIM_THRESHOLD) + ", " + "iterations:" + str(iterations) + ", objs:" + str(objs) + "==> PIT:" + str(pit_sum) + ", PITW:" + str(pitw_sum) + ", F1P:" + str(f1p[-1]) + ", Time:" + str((end_time - start_time)))
 
     ret = ""
     ret_pit = ""
@@ -1295,7 +1304,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
     ret_pitw = ""
     for val in pitw:
       ret_pitw += str(val) + ","
-    ret += str(DELAY_THRESHOLD) + ", " + str(SIM_THRESHOLD) + ", " + str(iterations) + ", " + str(objs) + "," + str(sum(pit)) + "," + ret_pit + str(sum(pitw)) + "," + ret_pitw + str(f1p[-1]) + "," + (
+    ret += str(DELAY_THRESHOLD) + ", " + str(SIM_THRESHOLD) + ", " + str(iterations) + ", " + str(objs) + "," + str(pit_sum) + "," + ret_pit + str(pitw_sum) + "," + ret_pitw + str(f1p[-1]) + "," + (
               str(end_time - start_time)) + "\n"
     f.write(ret)
 
@@ -1447,7 +1456,7 @@ def PIT(ideal_patterns, patterns, d_threshold, oracle_batch):
   id_index = [10, 11, 12, 1, 2, 3, 4, 5, 6, 7, 8, 9]
   for idx, id_pattern in enumerate(ideal_patterns):
     if len(oracle_batch[id_index[idx]-1]) == 0:
-      ret_PITs.append(0)
+      ret_PITs.append(None)
       continue
     max_PIT = 0
     for idx_gen, gen_pattern in enumerate(patterns):
@@ -1462,8 +1471,8 @@ def PIT(ideal_patterns, patterns, d_threshold, oracle_batch):
         for state_a, state_b in zip(id_pattern[3], gen_pattern[3]):
             env_sim.append(EnvStateComparePIT(state_a, state_b))
       if len(env_sim) != 0:
-        if max_PIT < (len(lcs) / len(id_pattern[2])) * 0.5 + np.nanmean(env_sim) * 0.5:
-          max_PIT = (len(lcs) / len(id_pattern[2])) * 0.5 + np.nanmean(env_sim) * 0.5
+        if max_PIT < (len(lcs) / len(id_pattern[2])) * 0.2 + np.nanmean(env_sim) * 0.8:
+          max_PIT = (len(lcs) / len(id_pattern[2])) * 0.2 + np.nanmean(env_sim) * 0.8
           # matched_id = idx_gen
       else:
         if max_PIT < (len(lcs) / len(id_pattern[2])):
@@ -1479,7 +1488,7 @@ def PITW(ideal_patterns, patterns, d_threshold, oracle_batch):
   id_index = [10, 11, 12, 1, 2, 3, 4, 5, 6, 7, 8, 9]
   for idx, id_pattern in enumerate(ideal_patterns):
     if len(oracle_batch[id_index[idx]-1]) == 0:
-      ret_PITWs.append(0)
+      ret_PITWs.append(None)
       continue
     max_PITW = 0
     for idx_gen, gen_pattern in enumerate(patterns):
@@ -1501,7 +1510,7 @@ def PITW(ideal_patterns, patterns, d_threshold, oracle_batch):
         for state_a, state_b in zip(id_pattern[3], gen_pattern[3]):
           env_sim.append(EnvStateComparePIT(state_a, state_b))
       if len(env_sim) != 0:
-        PITW = ((len(lcs) + weight_lcs) / (len(id_pattern[2]) + weight_id)) * 0.5 + np.nanmean(env_sim) * 0.5
+        PITW = ((len(lcs) + weight_lcs) / (len(id_pattern[2]) + weight_id)) * 0.2 + np.nanmean(env_sim) * 0.8
       else:
         PITW = ((len(lcs) + weight_lcs) / (len(id_pattern[2]) + weight_id))
       if max_PITW < PITW:
