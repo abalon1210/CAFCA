@@ -1074,7 +1074,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
   memberships = np.zeros((len(IM_),C_VALUE))
   prev_memberships = np.random.rand(len(IM_), C_VALUE)
   iterations = 0
-
+  start_time = time.time()
   if cl_type == 1 or cl_type == 2: # 0: FCM 1: CAFCA 2: KS2M
     print("============== Item Comparison ==============")
     for k in range(len(IM_)):
@@ -1084,7 +1084,9 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
           simvalues_item[k][l] = 1.0
         elif k < l:
           simvalues_item[k][l] = CAFCASimCal(IM_[k], IM_[l], DELAY_THRESHOLD)
+    end_time = time.time()
     diss_item = 1 - simvalues_item
+  print(end_time - start_time)
   # if target_scenario == "COLL":
   #   k = 4
   # else:
@@ -1143,7 +1145,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
 
   print("============== Initial Patterns Selected ==============")
   prev_objs = -1 # Sum of Squared Errors for Fuzzy C-means clustering
-  f = open(join(V_PATH, "FCM_1.csv"), 'a')
+  f = open(join(V_PATH, "FCM_2.csv"), 'a')
   while iterations < MAX_ITERATION:
     print("============== Iterations: " + str(iterations))
     start_time = time.time()
@@ -1235,7 +1237,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
       for i in range(len(clusters[j])):
         pattern = GetPattern(pattern, clusters[j][i], DELAY_THRESHOLD, MIN_LEN_THRESHOLD)
         # pattern = GetPatternWithoutEnv(pattern, clusters[j][i], DELAY_THRESHOLD, MIN_LEN_THRESHOLD)
-      patterns[j] = pattern
+      patterns[j] = copy.deepcopy(pattern)
     print("============== Patterns Updated")
 
     # Objective value calculation
@@ -1451,8 +1453,8 @@ def PIT(ideal_patterns, patterns, d_threshold, oracle_batch):
     #   continue
     max_PIT = 0
     for idx_gen, gen_pattern in enumerate(patterns):
-      #if idx_gen in matched:
-      #  continue
+      if idx_gen in matched:
+       continue
       env_sim = []
       lcs = GetPatternSimWithoutEnv(id_pattern, gen_pattern, d_threshold)[0][2]
       # lcs = GetPatternSim(id_pattern, gen_pattern, d_threshold)[0][2]
@@ -1464,11 +1466,12 @@ def PIT(ideal_patterns, patterns, d_threshold, oracle_batch):
       if len(env_sim) != 0:
         if max_PIT < (len(lcs) / len(id_pattern[2])) * 0.5 + np.nanmean(env_sim) * 0.5:
           max_PIT = (len(lcs) / len(id_pattern[2])) * 0.5 + np.nanmean(env_sim) * 0.5
-          # matched_id = idx_gen
+          matched_id = idx_gen
       else:
         if max_PIT < (len(lcs) / len(id_pattern[2])):
           max_PIT = (len(lcs) / len(id_pattern[2]))
-    # matched.append(matched_id)
+          matched_id = idx_gen
+      matched.append(matched_id)
     ret_PITs.append(max_PIT)
 
   return ret_PITs
@@ -1483,8 +1486,8 @@ def PITW(ideal_patterns, patterns, d_threshold, oracle_batch):
     #   continue
     max_PITW = 0
     for idx_gen, gen_pattern in enumerate(patterns):
-      # if idx_gen in matched:
-      #   continue
+      if idx_gen in matched:
+        continue
       lcs = GetPatternSimWithoutEnv(id_pattern, gen_pattern, d_threshold)[0][2]
       if lcs is None:
         continue
@@ -1506,8 +1509,8 @@ def PITW(ideal_patterns, patterns, d_threshold, oracle_batch):
         PITW = ((len(lcs) + weight_lcs) / (len(id_pattern[2]) + weight_id))
       if max_PITW < PITW:
         max_PITW = PITW
-        # matched_id = idx_gen
-    # matched.append(matched_id)
+        matched_id = idx_gen
+      matched.append(matched_id)
     ret_PITWs.append(max_PITW)
 
   return ret_PITWs
@@ -1717,7 +1720,7 @@ def EvaluateF1P(oracle,index,cluster): #oracle: [[str]], index: [str], cluster: 
 def RunFCM(IM_, oracle, exp_type): # exp_type : 0 -> OSR 1 -> COLL
   # IM Selection (Random)
   nIM_ = np.array(IM_)
-  j = 0
+  j = 1
   for i in range(12):
     if exp_type == 0:
       np.random.shuffle(nIM_)
@@ -1770,7 +1773,7 @@ def RunFCM(IM_, oracle, exp_type): # exp_type : 0 -> OSR 1 -> COLL
     if exp_type == 0: # OSR // 0: FCM, 1: CAFCA, 2:KS2M
       patterns, clusters = FCM(1, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle_batch, IM_Index)
     elif exp_type == 1: # COLL // 0: FCM, 1: CAFCA, 2:KS2M
-      patterns, clusters = FCM(0, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle_batch, IM_Index)
+      patterns, clusters = FCM(2, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle_batch, IM_Index)
     # end_time = time.time()
 
   # Evaluate the pattern mining & clustering results
