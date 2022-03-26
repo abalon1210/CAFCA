@@ -681,13 +681,18 @@ def MTSPattern(im_pattern, im_input, p, q, min_len_threshold):
   TIME_WINDOW_SIZE = 20.0
   max_tw = None
   max_sim = -1
-  for s_time_pattern in range(25, 80):
-    for s_time_input in range(25, 80):
+  if im_pattern is None:
+    return im_input
+  for s_time_pattern in range(25, 80, 5):
+    for s_time_input in range(25, 80, 5):
       pattern_tw = InteractionTWSlicer(im_pattern, float(s_time_pattern), float(s_time_pattern) + TIME_WINDOW_SIZE)
-      input_tw = InteractionTWSlicer(im_input, float(s_time_pattern), float(s_time_pattern) + TIME_WINDOW_SIZE)
+      input_tw = InteractionTWSlicer(im_input, float(s_time_input), float(s_time_input) + TIME_WINDOW_SIZE)
+      if pattern_tw is None or input_tw is None or pattern_tw[2] is None or input_tw[2] is None:
+        continue
       mts_sim = MTSSim(pattern_tw, input_tw, p,q)
       if mts_sim > max_sim:
         max_tw = copy.deepcopy(pattern_tw)
+        max_sim = mts_sim
   if max_tw is None or len(max_tw) < min_len_threshold:
     max_tw = im_pattern
   return max_tw
@@ -696,10 +701,12 @@ def MTS(im_pattern, im_input, p, q):
   TIME_WINDOW_SIZE = 20.0
   max_tw = None
   max_sim = -1
-  for s_time_pattern in range(25, 80):
-    for s_time_input in range(25, 80):
+  for s_time_pattern in range(25, 80, 5):
+    for s_time_input in range(25, 80, 5):
       pattern_tw = InteractionTWSlicer(im_pattern, float(s_time_pattern), float(s_time_pattern) + TIME_WINDOW_SIZE)
-      input_tw = InteractionTWSlicer(im_input, float(s_time_pattern), float(s_time_pattern) + TIME_WINDOW_SIZE)
+      input_tw = InteractionTWSlicer(im_input, float(s_time_input), float(s_time_input) + TIME_WINDOW_SIZE)
+      if pattern_tw is None or input_tw is None or pattern_tw[2] is None or input_tw[2] is None:
+        continue
       mts_sim = MTSSim(pattern_tw, input_tw, p,q)
       if mts_sim > max_sim:
         max_tw = copy.deepcopy(pattern_tw)
@@ -714,6 +721,10 @@ def MTSSim(im_pattern_tw, im_input_tw, p, q):
   message_identity_count = 0
   input_matched_t = []
   pattern_matched_t = []
+
+  if im_pattern_tw is None or im_pattern_tw[2] is None or im_input_tw is None or im_input_tw[2] is None or im_input_tw[3] is None or im_pattern_tw[3] is None:
+    return 0
+
   for (message_p, message_i) in zip(im_pattern_tw[2], im_input_tw[2]):
     if MCT(message_p, message_i):
       message_identity_count += 1
@@ -1268,9 +1279,9 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
     elif cl_type == 3:
       p = 0.8
       q = 0.2
-      for k in range(len(IM_)):
-        print("Run for " + str(k) + "th iteration")
-        for j in range(C_VALUE):
+      for j in range(C_VALUE):
+        print("Run for " + str(j) + "th iteration")
+        for k in range(len(IM_)):
           simvalues[k][j] = MTS(patterns[j], IM_[k], p, q)
     diss = 1 - simvalues
     print("============== Sim & Dissims Calculated")
@@ -1344,7 +1355,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
         random.shuffle(clusters[j]) # To make variation for the generated patterns
         for i in range(len(clusters[j])):
           pattern = MTSPattern(pattern, clusters[j][i], p, q, MIN_LEN_THRESHOLD)
-        patterns[j] = pattern
+        patterns[j] = copy.deepcopy(pattern)
     else:
       for j in range(C_VALUE):
         pattern = None
@@ -1352,7 +1363,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
         for i in range(len(clusters[j])):
           pattern = GetPattern(pattern, clusters[j][i], DELAY_THRESHOLD, MIN_LEN_THRESHOLD)
           # pattern = GetPatternWithoutEnv(pattern, clusters[j][i], DELAY_THRESHOLD, MIN_LEN_THRESHOLD)
-        patterns[j] = pattern
+        patterns[j] = copy.deepcopy(pattern)
     print("============== Patterns Updated")
 
     # Objective value calculation
@@ -1586,13 +1597,13 @@ def PIT(ideal_patterns, patterns, d_threshold, oracle_batch):
         if max_PIT < (len(lcs) / len(id_pattern[2])):
           max_PIT = (len(lcs) / len(id_pattern[2]))
     # matched.append(matched_id)
-    if max_PIT == 0:
-      print(lcs)
-      print(env_sim)
-      print(id_pattern[2])
-      print(id_pattern[3])
-      print(gen_pattern[2])
-      print(gen_pattern[3])
+    # if max_PIT == 0:
+    #   print(lcs)
+    #   print(env_sim)
+    #   print(id_pattern[2])
+    #   print(id_pattern[3])
+    #   print(gen_pattern[2])
+    #   print(gen_pattern[3])
     ret_PITs.append(max_PIT)
 
   return ret_PITs
@@ -1632,13 +1643,13 @@ def PITW(ideal_patterns, patterns, d_threshold, oracle_batch):
         max_PITW = PITW
         # matched_id = idx_gen
     # matched.append(matched_id)
-    if max_PIT == 0:
-      print(lcs)
-      print(env_sim)
-      print(id_pattern[2])
-      print(id_pattern[3])
-      print(gen_pattern[2])
-      print(gen_pattern[3])
+    # if max_PITW == 0:
+    #   print(lcs)
+    #   print(env_sim)
+    #   print(id_pattern[2])
+    #   print(id_pattern[3])
+    #   print(gen_pattern[2])
+    #   print(gen_pattern[3])
     ret_PITWs.append(max_PITW)
 
   return ret_PITWs
