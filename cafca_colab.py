@@ -1234,7 +1234,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
       for i in range(len(clusters[j])):
         pattern = GetPattern(pattern, clusters[j][i], DELAY_THRESHOLD, MIN_LEN_THRESHOLD)
         # pattern = GetPatternWithoutEnv(pattern, clusters[j][i], DELAY_THRESHOLD, MIN_LEN_THRESHOLD)
-      patterns[j] = pattern
+      patterns[j] = copy.deepcopy(pattern)
     print("============== Patterns Updated")
     print(patterns)
 
