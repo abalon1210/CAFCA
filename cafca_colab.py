@@ -389,8 +389,8 @@ def Quantification(distance): # 5: Very far / 4: Far / 3: Appropriate / 2: Close
 # Inputs: two models (pattern and input), d_threshold
 # Outputs: The most critical LCS among possible LCS generation sets, the LCS similarity value with the pattern and input models.
 def CAFCASimCal(im_pattern, im_input, d_threshold):
-  p = 0.8
-  q = 0.2
+  p = 0.2
+  q = 0.8
   generated_pattern, avg_env_sim = GetPatternSim(im_pattern, im_input, d_threshold)
   # generated_pattern, avg_env_sim = GetPatternSimWithoutEnv(im_pattern, im_input, d_threshold)
   # return p * (len(generated_pattern[2]) / (len(im_pattern[2]) * len(im_input[2]))) + q * avg_env_sim
@@ -1093,38 +1093,43 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
   #   k = 12
   # k_largest_index = np.column_stack(np.unravel_index(np.argpartition(diss_item.ravel(),diss_item.size-k)[-k:], diss_item.shape))
   print("============== FCM Run ==============")
-  while True: # Initial selection of C models from the whole models
-    initial_sims = []
-    max_flag = True
-    patterns = []
+  # while True: # Initial selection of C models from the whole models
+  #   initial_sims = []
+  #   max_flag = True
+  patterns = []
+  index = np.random.choice(IM_.shape[0], C_VALUE, replace=False)
+  for id in index:
+    patterns.append(IM_[id])
+  patterns = np.array(patterns)
+
     # while len(patterns) < C_VALUE: # Select C numbers of models
     #   item = IM_[random.randint(0,len(IM_)-1)]
     #   if (item not in patterns).any():
     #     patterns.append(item)
-    if cl_type == 0:
-      index = np.random.choice(IM_.shape[0], C_VALUE, replace=False)
-      for id in index:
-        patterns.append(IM_[id])
-      patterns = np.array(patterns)
-      for i in range(0, len(patterns)-1):
-        for j in range(i+1, len(patterns)):
-          init_sim_value = CAFCASimCal(patterns[i], patterns[j], DELAY_THRESHOLD) # Calculate the LCS_Sim values for each combination of initally selected models
-          if init_sim_value > MAX_INIT_SIM_THRESHOLD: # If two of them are highly simialr, choose the other models
-            max_flag = False
-            break
-          initial_sims.append(init_sim_value)
-        if not max_flag:
-          initial_sims.clear()
-          break
-      if max_flag and len(initial_sims) > 0 and sum(initial_sims)/len(initial_sims) < INIT_SIM_THRESHOLD: # If the average of the LCS_sim values of the models is non-acceptable, find other set of models
-        break
-    elif cl_type == 1 or cl_type == 2:
-      index = np.random.choice(IM_.shape[0], C_VALUE, replace=False)
-      for id in index:
-        patterns.append(IM_[id])
-      patterns = np.array(patterns)
-      break
-      # index = np.unique(k_largest_index.ravel())[:C_VALUE]
+    # if cl_type == 0:
+    #   index = np.random.choice(IM_.shape[0], C_VALUE, replace=False)
+    #   for id in index:
+    #     patterns.append(IM_[id])
+    #   patterns = np.array(patterns)
+    #   for i in range(0, len(patterns)-1):
+    #     for j in range(i+1, len(patterns)):
+    #       init_sim_value = CAFCASimCal(patterns[i], patterns[j], DELAY_THRESHOLD) # Calculate the LCS_Sim values for each combination of initally selected models
+    #       if init_sim_value > MAX_INIT_SIM_THRESHOLD: # If two of them are highly simialr, choose the other models
+    #         max_flag = False
+    #         break
+    #       initial_sims.append(init_sim_value)
+    #     if not max_flag:
+    #       initial_sims.clear()
+    #       break
+    #   if max_flag and len(initial_sims) > 0 and sum(initial_sims)/len(initial_sims) < INIT_SIM_THRESHOLD: # If the average of the LCS_sim values of the models is non-acceptable, find other set of models
+    #     break
+    # elif cl_type == 1 or cl_type == 2:
+    #   index = np.random.choice(IM_.shape[0], C_VALUE, replace=False)
+    #   for id in index:
+    #     patterns.append(IM_[id])
+    #   patterns = np.array(patterns)
+    #   break
+    #   # index = np.unique(k_largest_index.ravel())[:C_VALUE]
       # print(diss_item)
       # print(index)
       # np.sort(index)
@@ -1145,7 +1150,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
 
   print("============== Initial Patterns Selected ==============")
   prev_objs = -1 # Sum of Squared Errors for Fuzzy C-means clustering
-  f = open(join(V_PATH, "COLL_KS2M_p_8_q_2.csv"), 'a')
+  f = open(join(V_PATH, "COLL_FCM_p_2_q_8.csv"), 'a')
   while iterations < MAX_ITERATION:
     print("============== Iterations: " + str(iterations))
     start_time = time.time()
@@ -1464,8 +1469,8 @@ def PIT(ideal_patterns, patterns, d_threshold, oracle_batch):
         for state_a, state_b in zip(id_pattern[3], gen_pattern[3]):
             env_sim.append(EnvStateComparePIT(state_a, state_b))
       if len(env_sim) != 0:
-        if max_PIT < (len(lcs) / len(id_pattern[2])) * 0.8 + np.nanmean(env_sim) * 0.2:
-          max_PIT = (len(lcs) / len(id_pattern[2])) * 0.8 + np.nanmean(env_sim) * 0.2
+        if max_PIT < (len(lcs) / len(id_pattern[2])) * 0.2 + np.nanmean(env_sim) * 0.8:
+          max_PIT = (len(lcs) / len(id_pattern[2])) * 0.2 + np.nanmean(env_sim) * 0.8
           matched_id = idx_gen
       else:
         if max_PIT < (len(lcs) / len(id_pattern[2])):
@@ -1504,7 +1509,7 @@ def PITW(ideal_patterns, patterns, d_threshold, oracle_batch):
         for state_a, state_b in zip(id_pattern[3], gen_pattern[3]):
           env_sim.append(EnvStateComparePIT(state_a, state_b))
       if len(env_sim) != 0:
-        PITW = ((len(lcs) + weight_lcs) / (len(id_pattern[2]) + weight_id)) * 0.8 + np.nanmean(env_sim) * 0.2
+        PITW = ((len(lcs) + weight_lcs) / (len(id_pattern[2]) + weight_id)) * 0.2 + np.nanmean(env_sim) * 0.8
       else:
         PITW = ((len(lcs) + weight_lcs) / (len(id_pattern[2]) + weight_id))
       if max_PITW < PITW:
@@ -1773,7 +1778,7 @@ def RunFCM(IM_, oracle, exp_type): # exp_type : 0 -> OSR 1 -> COLL
     if exp_type == 0: # OSR // 0: FCM, 1: CAFCA, 2:KS2M
       patterns, clusters = FCM(1, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle_batch, IM_Index)
     elif exp_type == 1: # COLL // 0: FCM, 1: CAFCA, 2:KS2M
-      patterns, clusters = FCM(2, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle_batch, IM_Index)
+      patterns, clusters = FCM(0, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle_batch, IM_Index)
     # end_time = time.time()
 
   # Evaluate the pattern mining & clustering results
