@@ -1084,8 +1084,8 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
           simvalues_item[k][l] = 1.0
         elif k < l:
           simvalues_item[k][l] = CAFCASimCal(IM_[k], IM_[l], DELAY_THRESHOLD)
-    end_time = time.time()
     diss_item = 1 - simvalues_item
+  end_time = time.time()
   print(end_time - start_time)
   # if target_scenario == "COLL":
   #   k = 4
