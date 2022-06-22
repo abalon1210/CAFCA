@@ -1356,7 +1356,7 @@ def Silhouette(simvalues_item, IM_, clusters):
         b_list.append(temp / len(clusters[j]))
     b_i = min(b_list)
     sp.append((b_i - a_i) / max(a_i, b_i))
-  return ret
+  return float(sum(sp)) / float(len(sp))
 
 def GetIMIndex(im, IM_):
   for i in range(len(IM_)):
