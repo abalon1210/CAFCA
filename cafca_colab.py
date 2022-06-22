@@ -1311,15 +1311,57 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
       ret_pitw += str(val) + ","
     ret += str(DELAY_THRESHOLD) + ", " + str(SIM_THRESHOLD) + ", " + str(iterations) + ", " + str(objs) + "," + str(pit_sum) + "," + ret_pit + str(pitw_sum) + "," + ret_pitw + str(f1p[-1]) + "," + (
               str(end_time - start_time)) + "\n"
-    f.write(ret)
 
     if prev_objs != -1 and abs(objs - prev_objs) < SENSITIVITY_THRESHOLD:
       break
     else:
       prev_objs = objs
     iterations += 1
+  f.write(ret)
+  # Silhouette Analysis
+  print("============== Silhouette analysis ==============")
+  if cl_type == 0:
+    print("============== Item Comparison ==============")
+    for k in range(len(IM_)):
+      print("Run for " + str(k) + "th iteration")
+      for l in range(len(IM_)):
+        if k == l:
+          simvalues_item[k][l] = 1.0
+        elif k < l:
+          simvalues_item[k][l] = CAFCASimCal(IM_[k], IM_[l], DELAY_THRESHOLD)
+
+  silhouette = Silhouette(simvalues_item, IM_, clusters)
+  f.write(silhouette)
   f.close()
   return patterns, clusters
+
+def Silhouette(simvalues_item, IM_, clusters):
+  ret = 0.0
+  sp = []
+
+  for k in range(len(IM_)):
+    a_i = 0.0
+    for j in range(len(clusters)):
+      temp = 0.0
+      b_list = []
+      for clustered_im in clusters[j]:
+        index = GetIMIndex(clustered_im, IM_)
+        if k < index:
+          temp += simvalues_item[k][index]
+        else:
+          temp += simvalues_item[index][k]
+      if IMExistChecker(IM_[k], clusters[j]):
+        a_i = temp / len(clusters[j])
+      else:
+        b_list.append(temp / len(clusters[j]))
+    b_i = min(b_list)
+    sp.append((b_i - a_i) / max(a_i, b_i))
+  return ret
+
+def GetIMIndex(im, IM_):
+  for i in range(len(IM_)):
+    if im[0] == IM_[i][0]:
+      return i
 
 def D(diss, prev_memberships, index_cluster, index_item, m, diss_item): #index_cluster: j , index_item: k
   ret = 0.0
@@ -1352,7 +1394,8 @@ def D_KS2M(prev_memberships, index_cluster, index_item, m, diss_item): #index_cl
 def IMExistChecker(im, cluster):
   ret = False
   for clustered_im in cluster:
-    if im[0] == clustered_im[0]: ret = True
+    if im[0] == clustered_im[0]:
+      ret = True
 
   return ret
 
