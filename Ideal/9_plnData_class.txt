@@ -1,0 +1,16 @@
+configName      Class 9
+
+timeStep    vehId          fromState                     toState                       commandSent    receiverId     senderPltId    receiverPltId    maneuverStartEnd 
+
+85.00       veh            state_sendVoteLeader          state_waitForVoteReply        VOTE_LEADER    multicast      veh            veh              LLeave_Start	1
+85.04       veh.1          state_platoonFollower         state_platoonFollower         ELECTED_LEADER veh            veh            veh              -	0
+85.11       veh            state_sendSplitReq            state_waitForSplitReply       SPLIT_REQ      veh.1          veh            veh              -	1
+85.17       veh.1          state_platoonFollower         state_waitForCHANGEPL         SPLIT_ACCEPT   veh            veh            veh              -	0
+85.20       veh            state_makeItFreeAgent         state_waitForAck              CHANGE_PL      veh.1          veh            veh              -	0
+85.23       veh.1          state_sendingACK              state_waitForSplitDone        ACK            veh            veh.1          veh.1            -	0   
+85.36       veh            state_splitDone               state_splitCompleted          CHANGE_Tg      multicast      veh            veh              -	0   
+85.36       veh            state_splitDone               state_splitCompleted          SPLIT_DONE     veh.1          veh            veh              -	0
+89.13       veh.1          state_waitForGap              state_platoonLeader           GAP_CREATED    veh            veh.1          veh              Split_End	1     
+89.16       veh.1          state_sendMergeReq            state_waitForMergeReply       MERGE_REQ      veh            veh.1          veh              Merge_Request	1
+90.16       veh.1          state_sendMergeReq            state_waitForMergeReply       MERGE_REQ      veh            veh.1          veh              Merge_Request	1
+91.16       veh.1          state_sendMergeReq            state_waitForMergeReply       MERGE_REQ      veh            veh.1          veh              Merge_Request	0

@@ -1,0 +1,18 @@
+configName      Class 3
+
+timeStep    vehId          fromState                     toState                       commandSent    receiverId     senderPltId    receiverPltId    maneuverStartEnd 
+
+85.00       veh.1          state_sendVoteLeader          state_waitForVoteReply        VOTE_LEADER    multicast      veh.1          veh.1            LLeave_Start	1
+85.06       veh.4          state_sendMergeReq            state_waitForMergeReply       MERGE_REQ      veh.1          veh.4          veh.1            Merge_Request	1
+85.08       veh.2          state_platoonFollower         state_platoonFollower         ELECTED_LEADER veh.1          veh.1          veh.1            -	1
+85.10       veh.1          state_sendSplitReq            state_waitForSplitReply       SPLIT_REQ      veh.2          veh.1          veh.1            -	1
+85.18       veh.2          state_platoonFollower         state_waitForCHANGEPL         SPLIT_ACCEPT   veh.1          veh.1          veh.1            -	0     
+85.27       veh.1          state_makeItFreeAgent         state_waitForAck              CHANGE_PL      veh.2          veh.1          veh.1            -	0 
+85.36       veh.2          state_sendingACK              state_waitForSplitDone        ACK            veh.1          veh.2          veh.2            -	0
+85.48       veh.1          state_splitDone               state_splitCompleted          CHANGE_Tg      multicast      veh.1          veh.1            -	0 
+85.48       veh.1          state_splitDone               state_splitCompleted          SPLIT_DONE     veh.2          veh.1          veh.1            -	1
+86.06       veh.4          state_sendMergeReq            state_waitForMergeReply       MERGE_REQ      veh.1          veh.4          veh.1            Merge_Request	1
+87.06       veh.4          state_sendMergeReq            state_waitForMergeReply       MERGE_REQ      veh.1          veh.4          veh.1            Merge_Request	1
+88.06       veh.4          state_sendMergeReq            state_waitForMergeReply       MERGE_REQ      veh.1          veh.4          veh.1            Merge_Request	0
+89.06       veh.4          state_sendMergeReq            state_waitForMergeReply       MERGE_REQ      veh.1          veh.4          veh.1            Merge_Request	0
+89.97       veh.2          state_waitForGap              state_platoonLeader           GAP_CREATED    veh.1          veh.2          veh.1            Split_End	1
