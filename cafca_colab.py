@@ -666,7 +666,7 @@ def GetMaxContentLCS(generated_lcs, generated_env):  # GetMaxContentLCS among th
 def InteractionSeqSlicer(im,time):  # Only slice the message sequences by the time TODO: If necessary, cover Env slicing too?
   if time == 25:
     return im
-  if im[2] is None:
+  if im is None or im[2] is None or im[3] is None:
     return im
   ret = copy.deepcopy(im)
   ret_interaction = None
@@ -1196,53 +1196,51 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
         elif k < l:
           simvalues_item[k][l] = CAFCASimCal(IM_[k], IM_[l], DELAY_THRESHOLD)
     diss_item = 1 - simvalues_item
-  end_time = time.time()
-  print(end_time - start_time)
-  # if target_scenario == "COLL":
-  #   k = 4
-  # else:
-  #   k = 12
+  if target_scenario == "COLL":
+    k = 4
+  else:
+    k = 12
   # k_largest_index = np.column_stack(np.unravel_index(np.argpartition(diss_item.ravel(),diss_item.size-k)[-k:], diss_item.shape))
   print("============== FCM Run ==============")
-  # while True: # Initial selection of C models from the whole models
-  #   initial_sims = []
-  #   max_flag = True
   patterns = []
   index = np.random.choice(IM_.shape[0], C_VALUE, replace=False)
   for id in index:
     patterns.append(IM_[id])
   patterns = np.array(patterns)
-
-    # while len(patterns) < C_VALUE: # Select C numbers of models
-    #   item = IM_[random.randint(0,len(IM_)-1)]
-    #   if (item not in patterns).any():
-    #     patterns.append(item)
-    # if cl_type == 0:
-    #   index = np.random.choice(IM_.shape[0], C_VALUE, replace=False)
-    #   for id in index:
-    #     patterns.append(IM_[id])
-    #   patterns = np.array(patterns)
-    #   for i in range(0, len(patterns)-1):
-    #     for j in range(i+1, len(patterns)):
-    #       init_sim_value = CAFCASimCal(patterns[i], patterns[j], DELAY_THRESHOLD) # Calculate the LCS_Sim values for each combination of initally selected models
-    #       if init_sim_value > MAX_INIT_SIM_THRESHOLD: # If two of them are highly simialr, choose the other models
-    #         max_flag = False
-    #         break
-    #       initial_sims.append(init_sim_value)
-    #     if not max_flag:
-    #       initial_sims.clear()
-    #       break
-    #   if max_flag and len(initial_sims) > 0 and sum(initial_sims)/len(initial_sims) < INIT_SIM_THRESHOLD: # If the average of the LCS_sim values of the models is non-acceptable, find other set of models
-    #     break
-    # elif cl_type == 1 or cl_type == 2:
-    #   index = np.random.choice(IM_.shape[0], C_VALUE, replace=False)
-    #   for id in index:
-    #     patterns.append(IM_[id])
-    #   patterns = np.array(patterns)
-    #   break
-    #   # index = np.unique(k_largest_index.ravel())[:C_VALUE]
-      # print(diss_item)
-      # print(index)
+  # while True: # Initial selection of C models from the whole models
+  #   initial_sims = []
+  #   max_flag = True
+  #   patterns = []
+  #   # while len(patterns) < C_VALUE: # Select C numbers of models
+  #   #   item = IM_[random.randint(0,len(IM_)-1)]
+  #   #   if (item not in patterns).any():
+  #   #     patterns.append(item)
+  #   if cl_type == 0:
+  #     index = np.random.choice(IM_.shape[0], C_VALUE, replace=False)
+  #     for id in index:
+  #       patterns.append(IM_[id])
+  #     patterns = np.array(patterns)
+  #     for i in range(0, len(patterns)-1):
+  #       for j in range(i+1, len(patterns)):
+  #         init_sim_value = CAFCASimCal(patterns[i], patterns[j], DELAY_THRESHOLD) # Calculate the LCS_Sim values for each combination of initally selected models
+  #         if init_sim_value > MAX_INIT_SIM_THRESHOLD: # If two of them are highly simialr, choose the other models
+  #           max_flag = False
+  #           break
+  #         initial_sims.append(init_sim_value)
+  #       if not max_flag:
+  #         initial_sims.clear()
+  #         break
+  #     if max_flag and len(initial_sims) > 0 and sum(initial_sims)/len(initial_sims) < INIT_SIM_THRESHOLD: # If the average of the LCS_sim values of the models is non-acceptable, find other set of models
+  #       break
+  #   elif cl_type == 1 or cl_type == 2:
+  #     # index = np.unique(k_largest_index.ravel())[:C_VALUE]
+  #     print(diss_item)
+  #     index = np.random.choice(IM_.shape[0], C_VALUE, replace=False)
+  #     for id in index:
+  #       patterns.append(IM_[id])
+  #     patterns = np.array(patterns)
+  #     break
+      # print(k_largest_index)
       # np.sort(index)
       # for id in index:
       #   patterns.append(IM_[id])
@@ -1261,7 +1259,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
 
   print("============== Initial Patterns Selected ==============")
   prev_objs = -1 # Sum of Squared Errors for Fuzzy C-means clustering
-  f = open(join(V_PATH, "COLL_FCM_p_2_q_8.csv"), 'a')
+  f = open(join(V_PATH, "OSR_FCM_p_5_q_5_.csv"), 'a')
   while iterations < MAX_ITERATION:
     print("============== Iterations: " + str(iterations))
     start_time = time.time()
@@ -1292,6 +1290,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
           simvalues[k][j] = MTS(patterns[j], IM_[k], p, q)
     diss = 1 - simvalues
     print("============== Sim & Dissims Calculated")
+    # print(diss)
 
     # Membership calculation
     if cl_type == 0 or cl_type == 3: # FCM
@@ -1334,6 +1333,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
         for j in range(C_VALUE):
             memberships[k][j] = temp[j] / sum(temp)
     print("============== Memberships Calculated")
+    # print(memberships)
 
     # Clustering
     clusters = [[] for j in range(C_VALUE)]
@@ -1351,6 +1351,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
             max_idx = i
         clusters[max_idx].append(IM_[k])
     print("============== Logs Clustered")
+    # print(clusters)
 
     # Pattern update
     patterns.fill(None)
@@ -1372,6 +1373,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
           # pattern = GetPatternWithoutEnv(pattern, clusters[j][i], DELAY_THRESHOLD, MIN_LEN_THRESHOLD)
         patterns[j] = copy.deepcopy(pattern)
     print("============== Patterns Updated")
+    print(patterns)
 
     # Objective value calculation
     objs = 0.0
@@ -1421,7 +1423,16 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
     pit = PIT(ideal_patterns, patterns, 0.05, oracle_batch)
     pitw = PITW(ideal_patterns, patterns, 0.05, oracle_batch)
     f1p = EvaluateF1P(oracle_batch, IM_Index, clusters)
-    print("d_threshold:" + str(DELAY_THRESHOLD) + ", " + "sim_threshold:" + str(SIM_THRESHOLD) + ", " + "iterations:" + str(iterations) + ", objs:" + str(objs) + "==> PIT:" + str(sum(pit)) + ", PITW:" + str(sum(pitw)) + ", F1P:" + str(f1p[-1]) + ", Time:" + str((end_time - start_time)))
+    pit_sum = 0
+    for val in pit:
+      if not val is None:
+        pit_sum += val
+
+    pitw_sum = 0
+    for val in pitw:
+      if not val is None:
+        pitw_sum += val
+    print("d_threshold:" + str(DELAY_THRESHOLD) + ", " + "sim_threshold:" + str(SIM_THRESHOLD) + ", " + "iterations:" + str(iterations) + ", objs:" + str(objs) + "==> PIT:" + str(pit_sum) + ", PITW:" + str(pitw_sum) + ", F1P:" + str(f1p[-1]) + ", Time:" + str((end_time - start_time)))
 
     ret = ""
     ret_pit = ""
@@ -1430,17 +1441,59 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
     ret_pitw = ""
     for val in pitw:
       ret_pitw += str(val) + ","
-    ret += str(DELAY_THRESHOLD) + ", " + str(SIM_THRESHOLD) + ", " + str(iterations) + ", " + str(objs) + "," + str(sum(pit)) + "," + ret_pit + str(sum(pitw)) + "," + ret_pitw + str(f1p[-1]) + "," + (
+    ret += str(DELAY_THRESHOLD) + ", " + str(SIM_THRESHOLD) + ", " + str(iterations) + ", " + str(objs) + "," + str(pit_sum) + "," + ret_pit + str(pitw_sum) + "," + ret_pitw + str(f1p[-1]) + "," + (
               str(end_time - start_time)) + "\n"
-    f.write(ret)
 
     if prev_objs != -1 and abs(objs - prev_objs) < SENSITIVITY_THRESHOLD:
       break
     else:
       prev_objs = objs
     iterations += 1
+  f.write(ret)
+  # Silhouette Analysis
+  print("============== Silhouette analysis ==============")
+  if cl_type == 0:
+    print("============== Item Comparison ==============")
+    for k in range(len(IM_)):
+      print("Run for " + str(k) + "th iteration")
+      for l in range(len(IM_)):
+        if k == l:
+          simvalues_item[k][l] = 1.0
+        elif k < l:
+          simvalues_item[k][l] = CAFCASimCal(IM_[k], IM_[l], DELAY_THRESHOLD)
+
+  silhouette = Silhouette(simvalues_item, IM_, clusters)
+  f.write(silhouette)
   f.close()
   return patterns, clusters
+
+def Silhouette(simvalues_item, IM_, clusters):
+  ret = 0.0
+  sp = []
+
+  for k in range(len(IM_)):
+    a_i = 0.0
+    for j in range(len(clusters)):
+      temp = 0.0
+      b_list = []
+      for clustered_im in clusters[j]:
+        index = GetIMIndex(clustered_im, IM_)
+        if k < index:
+          temp += simvalues_item[k][index]
+        else:
+          temp += simvalues_item[index][k]
+      if IMExistChecker(IM_[k], clusters[j]):
+        a_i = temp / len(clusters[j])
+      else:
+        b_list.append(temp / len(clusters[j]))
+    b_i = min(b_list)
+    sp.append((b_i - a_i) / max(a_i, b_i))
+  return float(sum(sp)) / float(len(sp))
+
+def GetIMIndex(im, IM_):
+  for i in range(len(IM_)):
+    if im[0] == IM_[i][0]:
+      return i
 
 def D(diss, prev_memberships, index_cluster, index_item, m, diss_item): #index_cluster: j , index_item: k
   ret = 0.0
@@ -1473,7 +1526,8 @@ def D_KS2M(prev_memberships, index_cluster, index_item, m, diss_item): #index_cl
 def IMExistChecker(im, cluster):
   ret = False
   for clustered_im in cluster:
-    if im[0] == clustered_im[0]: ret = True
+    if im[0] == clustered_im[0]:
+      ret = True
 
   return ret
 
@@ -1581,9 +1635,9 @@ def PIT(ideal_patterns, patterns, d_threshold, oracle_batch):
   ret_PITs = []
   # id_index = [1,2,3,4] #OSR: [10, 11, 12, 1, 2, 3, 4, 5, 6, 7, 8, 9]
   for idx, id_pattern in enumerate(ideal_patterns):
-    # if len(oracle_batch[id_index[idx]-1]) == 0:
-    #   ret_PITs.append(0)
-    #   continue
+    if len(oracle_batch[id_index[idx]-1]) == 0:
+      ret_PITs.append(None)
+      continue
     max_PIT = 0
     for idx_gen, gen_pattern in enumerate(patterns):
       if idx_gen in matched:
@@ -1597,14 +1651,13 @@ def PIT(ideal_patterns, patterns, d_threshold, oracle_batch):
         for state_a, state_b in zip(id_pattern[3], gen_pattern[3]):
             env_sim.append(EnvStateComparePIT(state_a, state_b))
       if len(env_sim) != 0:
-        if max_PIT < (len(lcs) / len(id_pattern[2])) * 0.2 + np.nanmean(env_sim) * 0.8:
-          max_PIT = (len(lcs) / len(id_pattern[2])) * 0.2 + np.nanmean(env_sim) * 0.8
-          matched_id = idx_gen
+        if max_PIT < (len(lcs) / len(id_pattern[2])) * 0.5 + np.nanmean(env_sim) * 0.5:
+          max_PIT = (len(lcs) / len(id_pattern[2])) * 0.5 + np.nanmean(env_sim) * 0.5
+          # matched_id = idx_gen
       else:
         if max_PIT < (len(lcs) / len(id_pattern[2])):
           max_PIT = (len(lcs) / len(id_pattern[2]))
-          matched_id = idx_gen
-      matched.append(matched_id)
+    # matched.append(matched_id)
     ret_PITs.append(max_PIT)
 
   return ret_PITs
@@ -1637,13 +1690,13 @@ def PITW(ideal_patterns, patterns, d_threshold, oracle_batch):
         for state_a, state_b in zip(id_pattern[3], gen_pattern[3]):
           env_sim.append(EnvStateComparePIT(state_a, state_b))
       if len(env_sim) != 0:
-        PITW = ((len(lcs) + weight_lcs) / (len(id_pattern[2]) + weight_id)) * 0.2 + np.nanmean(env_sim) * 0.8
+        PITW = ((len(lcs) + weight_lcs) / (len(id_pattern[2]) + weight_id)) * 0.5 + np.nanmean(env_sim) * 0.5
       else:
         PITW = ((len(lcs) + weight_lcs) / (len(id_pattern[2]) + weight_id))
       if max_PITW < PITW:
         max_PITW = PITW
-        matched_id = idx_gen
-      matched.append(matched_id)
+        # matched_id = idx_gen
+    # matched.append(matched_id)
     ret_PITWs.append(max_PITW)
 
   return ret_PITWs
@@ -1904,9 +1957,9 @@ def RunFCM(IM_, oracle, exp_type): # exp_type : 0 -> OSR 1 -> COLL
     if i != 0 and i % 3 == 0:
       j += 1
     if exp_type == 0: # OSR // 0: FCM, 1: CAFCA, 2:KS2M
-      patterns, clusters = FCM(1, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle_batch, IM_Index)
-    elif exp_type == 1: # COLL // 0: FCM, 1: CAFCA, 2:KS2M, 3:MTS + FCM
-      patterns, clusters = FCM(1, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle_batch, IM_Index)
+      patterns, clusters = FCM(0, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle_batch, IM_Index)
+    elif exp_type == 1: # COLL // 0: FCM, 1: CAFCA, 2:KS2M
+      patterns, clusters = FCM(1, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle, IM_Index)
     # end_time = time.time()
 
   # Evaluate the pattern mining & clustering results
