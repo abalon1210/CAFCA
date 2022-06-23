@@ -29,9 +29,9 @@ from numpy.linalg import norm
 # import torch
 
 target_scenario = 'OP_SUCCESS_RATE'  # INPUT: OP_SUCCESS_RATE or COLLISION
-LOG_PATH = 'C:/Users/Hyun/IdeaProjects/StarPlateS/SoS_Extension/logs_full/sample'
-V_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA'
-IDEAL_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA/Ideal/OSR'
+LOG_PATH = 'C:/Users/Administrator/IdeaProjects/StarPlateS/SoS_Extension/logs_full'
+V_PATH = 'C:/Users/Administrator/IdeaProjects/CAFCA'
+IDEAL_PATH = 'C:/Users/Administrator/IdeaProjects/CAFCA/Ideal/OSR'
 
 print('In Log Folder : ', os.listdir(LOG_PATH))
 
@@ -389,8 +389,8 @@ def Quantification(distance): # 5: Very far / 4: Far / 3: Appropriate / 2: Close
 # Inputs: two models (pattern and input), d_threshold
 # Outputs: The most critical LCS among possible LCS generation sets, the LCS similarity value with the pattern and input models.
 def CAFCASimCal(im_pattern, im_input, d_threshold):
-  p = 0.2
-  q = 0.8
+  p = 0.8
+  q = 0.2
   generated_pattern, avg_env_sim = GetPatternSim(im_pattern, im_input, d_threshold)
   # generated_pattern, avg_env_sim = GetPatternSimWithoutEnv(im_pattern, im_input, d_threshold)
   # return p * (len(generated_pattern[2]) / (len(im_pattern[2]) * len(im_input[2]))) + q * avg_env_sim
@@ -1259,7 +1259,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
 
   print("============== Initial Patterns Selected ==============")
   prev_objs = -1 # Sum of Squared Errors for Fuzzy C-means clustering
-  f = open(join(V_PATH, "OSR_FCM_p_2_q_8_.csv"), 'a')
+  f = open(join(V_PATH, "OSR_FCM_p_8_q_2_.csv"), 'a')
   while iterations < MAX_ITERATION:
     print("============== Iterations: " + str(iterations))
     start_time = time.time()
@@ -1463,7 +1463,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
           simvalues_item[k][l] = CAFCASimCal(IM_[k], IM_[l], DELAY_THRESHOLD)
 
   silhouette = Silhouette(simvalues_item, IM_, clusters)
-  f.write(silhouette)
+  f.write(str(silhouette) + "\n")
   f.close()
   return patterns, clusters
 
@@ -1954,6 +1954,7 @@ def RunFCM(IM_, oracle, exp_type): # exp_type : 0 -> OSR 1 -> COLL
     # Run FCM with hyperparam settings
     # for DELAY_THRESHOLD in range(1, 11):
     # start_time = time.time()
+    C_VALUE = 2
     if i != 0 and i % 3 == 0:
       j += 1
     if exp_type == 0: # OSR // 0: FCM, 1: CAFCA, 2:KS2M
