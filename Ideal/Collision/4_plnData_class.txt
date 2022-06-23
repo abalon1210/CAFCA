@@ -1,0 +1,79 @@
+configName      Class 4 - END-FOLLOWER-LEAVE (Collision - 3089)
+
+timeStep    vehId          fromState                     toState                       commandSent    receiverId     senderPltId    receiverPltId    maneuverStartEnd 
+          
+85.00       veh.3          state_sendLeaveReq            state_waitForLeaveReply       LEAVE_REQ      veh            veh            veh              FLeave_Request   
+85.02       veh            state_platoonLeader           state_sendSplitReq            LEAVE_ACCEPT   veh.3          veh            veh              -                
+85.02       veh            state_sendSplitReq            state_waitForSplitReply       SPLIT_REQ      veh.3          veh            veh              -                
+86.02       veh            state_sendSplitReq            state_waitForSplitReply       SPLIT_REQ      veh.3          veh            veh              -                
+86.09       veh.3          state_platoonFollower         state_waitForCHANGEPL         SPLIT_ACCEPT   veh            veh            veh              -                
+86.14       veh            state_makeItFreeAgent         state_waitForAck              CHANGE_PL      veh.3          veh            veh              -                
+86.16       veh.3          state_sendingACK              state_waitForSplitDone        ACK            veh            veh.3          veh.3            -                
+86.17       veh            state_splitDone               state_platoonLeader           CHANGE_Tg      multicast      veh            veh              -                
+86.17       veh            state_splitDone               state_platoonLeader           SPLIT_DONE     veh.3          veh            veh              -                
+90.24       veh.3          state_waitForGap              state_platoonLeader           GAP_CREATED    veh            veh.3          veh              Split_End        
+
+84.00: [5,2,2,2,1,3,3,5] 
+84.10: [5,2,2,2,1,3,3,5] 
+84.20: [5,2,2,2,1,3,3,5] 
+84.30: [5,2,2,2,1,3,3,5] 
+84.40: [5,2,2,2,1,3,3,5] 
+84.50: [5,2,2,2,1,3,3,5] 
+84.60: [5,2,2,2,1,3,3,5] 
+84.70: [5,2,2,2,1,3,3,5] 
+84.80: [5,2,2,2,1,3,3,5] 
+84.90: [5,2,2,2,1,3,3,5] 
+85.00: [5,2,2,2,1,3,3,5] 
+85.10: [2,2,2,1,3,3,5] 
+85.20: [2,2,2,1,3,3,5] 
+85.30: [2,2,2,1,3,3,5] 
+85.40: [2,2,2,1,3,3,5] 
+85.50: [2,2,2,1,3,3,5] 
+85.60: [2,2,2,1,3,3,5] 
+85.70: [2,2,2,1,3,3,5] 
+85.80: [2,2,2,1,3,3,5] 
+85.90: [2,2,2,1,3,3,5] 
+86.00: [2,2,2,1,3,3,5] 
+86.10: [2,2,2,1,3,3,5] 
+86.20: [2,2,2,1,3,3,5] 
+86.30: [2,2,2,1,3,3,5] 
+86.40: [2,2,2,1,3,3,5] 
+86.50: [2,2,2,1,3,3,5] 
+86.60: [2,2,2,1,3,3,5] 
+86.70: [2,2,2,1,3,3,5] 
+86.80: [2,2,2,1,3,3,5] 
+86.90: [2,2,2,1,3,3,5] 
+87.00: [2,2,2,3,3,5] 
+87.10: [2,2,2,3,3,5] 
+87.20: [2,2,2,3,3,5] 
+87.30: [2,2,2,3,3,5] 
+87.40: [2,2,2,3,3,5] 
+87.50: [2,2,2,3,3,5] 
+87.60: [2,2,2,3,3,5] 
+87.70: [2,2,2,3,3,5,4]
+87.80: [2,2,2,3,3,5,4]
+87.90: [2,2,2,3,3,4,4]
+88.00: [2,2,2,3,3,4,4]
+88.10: [2,2,3,3,3,4,4]
+88.20: [2,2,3,3,3,4,4]
+88.30: [2,2,3,3,3,4,4]
+88.40: [2,2,3,3,3,4,4]
+88.50: [2,2,3,3,3,4,4]
+88.60: [2,2,3,3,3,4,4]
+88.70: [2,2,3,3,3,4,4]
+88.80: [2,2,3,3,3,4,4]
+88.90: [2,2,3,3,3,4,4]
+89.00: [2,2,3,3,3,4,4]
+89.10: [2,2,3,3,3,4,4]
+89.20: [2,2,3,3,3,4,4]
+89.30: [2,2,3,3,3,4,4]
+89.40: [2,2,3,3,3,4,4]
+89.50: [2,2,3,3,2,4,4]
+89.60: [2,2,3,3,2,4,4]
+89.70: [2,2,3,3,2,4,4]
+89.80: [2,2,3,3,2,4,4]
+89.90: [2,2,3,3,2,4,4]
+90.00: [2,2,3,3,2,4,4]
+90.10: [2,2,3,3,2,4,4]
+90.20: [2,2,3,3,2,4,4]
+90.30: [2,2,3,2,4,4]

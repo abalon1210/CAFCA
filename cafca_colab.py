@@ -28,10 +28,10 @@ from numpy import dot
 from numpy.linalg import norm
 # import torch
 
-target_scenario = 'COLLISION'  # INPUT: OP_SUCCESS_RATE or COLLISION
-LOG_PATH = 'C:/Users/Administrator/IdeaProjects/StarPlateS/SoS_Extension/logs_full'
-V_PATH = 'C:/Users/Administrator/IdeaProjects/CAFCA'
-IDEAL_PATH = 'C:/Users/Administrator/IdeaProjects/CAFCA/Ideal/Collision'
+target_scenario = 'OP_SUCCESS_RATE'  # INPUT: OP_SUCCESS_RATE or COLLISION
+LOG_PATH = 'C:/Users/Hyun/IdeaProjects/StarPlateS/SoS_Extension/logs_full/sample'
+V_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA'
+IDEAL_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA/Ideal/OSR'
 
 print('In Log Folder : ', os.listdir(LOG_PATH))
 
@@ -1259,7 +1259,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
 
   print("============== Initial Patterns Selected ==============")
   prev_objs = -1 # Sum of Squared Errors for Fuzzy C-means clustering
-  f = open(join(V_PATH, "OSR_FCM_p_5_q_5_.csv"), 'a')
+  f = open(join(V_PATH, "OSR_FCM_p_2_q_8_.csv"), 'a')
   while iterations < MAX_ITERATION:
     print("============== Iterations: " + str(iterations))
     start_time = time.time()
@@ -1373,7 +1373,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
           # pattern = GetPatternWithoutEnv(pattern, clusters[j][i], DELAY_THRESHOLD, MIN_LEN_THRESHOLD)
         patterns[j] = copy.deepcopy(pattern)
     print("============== Patterns Updated")
-    print(patterns)
+    # print(patterns)
 
     # Objective value calculation
     objs = 0.0
@@ -1473,9 +1473,9 @@ def Silhouette(simvalues_item, IM_, clusters):
 
   for k in range(len(IM_)):
     a_i = 0.0
+    b_list = []
     for j in range(len(clusters)):
       temp = 0.0
-      b_list = []
       for clustered_im in clusters[j]:
         index = GetIMIndex(clustered_im, IM_)
         if k < index:
@@ -1635,9 +1635,9 @@ def PIT(ideal_patterns, patterns, d_threshold, oracle_batch):
   ret_PITs = []
   # id_index = [1,2,3,4] #OSR: [10, 11, 12, 1, 2, 3, 4, 5, 6, 7, 8, 9]
   for idx, id_pattern in enumerate(ideal_patterns):
-    if len(oracle_batch[id_index[idx]-1]) == 0:
-      ret_PITs.append(None)
-      continue
+    # if len(oracle_batch[id_index[idx]-1]) == 0:
+    #   ret_PITs.append(None)
+    #   continue
     max_PIT = 0
     for idx_gen, gen_pattern in enumerate(patterns):
       if idx_gen in matched:
@@ -1651,8 +1651,8 @@ def PIT(ideal_patterns, patterns, d_threshold, oracle_batch):
         for state_a, state_b in zip(id_pattern[3], gen_pattern[3]):
             env_sim.append(EnvStateComparePIT(state_a, state_b))
       if len(env_sim) != 0:
-        if max_PIT < (len(lcs) / len(id_pattern[2])) * 0.5 + np.nanmean(env_sim) * 0.5:
-          max_PIT = (len(lcs) / len(id_pattern[2])) * 0.5 + np.nanmean(env_sim) * 0.5
+        if max_PIT < (len(lcs) / len(id_pattern[2])) * 0.2 + np.nanmean(env_sim) * 0.8:
+          max_PIT = (len(lcs) / len(id_pattern[2])) * 0.2 + np.nanmean(env_sim) * 0.8
           # matched_id = idx_gen
       else:
         if max_PIT < (len(lcs) / len(id_pattern[2])):
@@ -1690,7 +1690,7 @@ def PITW(ideal_patterns, patterns, d_threshold, oracle_batch):
         for state_a, state_b in zip(id_pattern[3], gen_pattern[3]):
           env_sim.append(EnvStateComparePIT(state_a, state_b))
       if len(env_sim) != 0:
-        PITW = ((len(lcs) + weight_lcs) / (len(id_pattern[2]) + weight_id)) * 0.5 + np.nanmean(env_sim) * 0.5
+        PITW = ((len(lcs) + weight_lcs) / (len(id_pattern[2]) + weight_id)) * 0.2 + np.nanmean(env_sim) * 0.8
       else:
         PITW = ((len(lcs) + weight_lcs) / (len(id_pattern[2]) + weight_id))
       if max_PITW < PITW:
@@ -1987,7 +1987,8 @@ def main():
 
   # RunSPADE(FIM)
   # RunLogLiner(FIM, classification_data)
-  RunFCM(FIM, classification_data[:-2], 1) # 0 : OSR, 1 : COLL
+  # RunFCM(FIM, classification_data[:-2], 1) # 0 : OSR, 1 : COLL
+  RunFCM(FIM, classification_data, 0)
 
 if __name__ == "__main__":
   main()

@@ -1,0 +1,77 @@
+configName      Class 1 - LEADER-LEAVE (Collision - 3200)
+
+timeStep    vehId          fromState                     toState                       commandSent    receiverId     senderPltId    receiverPltId    maneuverStartEnd 
+
+65.00       veh1           state_sendVoteLeader          state_waitForVoteReply        VOTE_LEADER    multicast      veh1           veh1             LLeave_Start     
+65.06       veh1.1         state_platoonFollower         state_platoonFollower         ELECTED_LEADER veh1           veh1           veh1             -                
+65.16       veh1           state_sendSplitReq            state_waitForSplitReply       SPLIT_REQ      veh1.1         veh1           veh1             -                
+65.18       veh1.1         state_platoonFollower         state_waitForCHANGEPL         SPLIT_ACCEPT   veh1           veh1           veh1             -                  
+65.27       veh1           state_makeItFreeAgent         state_waitForAck              CHANGE_PL      veh1.1         veh1           veh1             -                        
+65.33       veh1.1         state_sendingACK              state_waitForSplitDone        ACK            veh1           veh1.1         veh1.1           -                   
+65.35       veh1           state_changePL                state_waitForAllAcks2         CHANGE_PL      veh1.2         veh1           veh1             -                
+65.35       veh1           state_changePL                state_waitForAllAcks2         CHANGE_PL      veh1.3         veh1           veh1             -                
+65.35       veh1.3         state_platoonFollower         state_platoonFollower         ACK            veh1           veh1.1         veh1             -                
+65.39       veh1.2         state_platoonFollower         state_platoonFollower         ACK            veh1           veh1.1         veh1             -                
+65.44       veh1           state_splitDone               state_splitCompleted          CHANGE_Tg      multicast      veh1           veh1             -                
+65.44       veh1           state_splitDone               state_splitCompleted          SPLIT_DONE     veh1.1         veh1           veh1             -                
+69.58       veh1.1         state_waitForGap              state_platoonLeader           GAP_CREATED    veh1           veh1.1         veh1             Split_End        
+    
+64.00: [2,2,2,1,5,5]
+64.10: [2,2,2,1,5,5]
+64.20: [2,2,2,1,5,5]
+64.30: [2,2,2,1,5,5]
+64.40: [2,2,2,1,5,5]
+64.50: [2,2,2,1,5,5]
+64.60: [2,2,2,1,5,5]
+64.70: [2,2,2,1,5,5]
+64.80: [2,2,2,1,5,5]
+64.90: [2,2,2,1,5,5]
+65.00: [2,2,2,1,5,5]
+65.10: [2,2,2,1,5,5]
+65.20: [2,2,2,1,5,5]
+65.30: [2,2,2,1,5,5]
+65.40: [2,2,2,1,5,5]
+65.50: [2,2,2,1,5,5]
+65.60: [2,2,2,1,5,5]
+65.70: [2,2,2,1,5,5]
+65.80: [2,2,2,1,5,5]
+65.90: [2,2,2,1,5,5]
+66.00: [2,2,2,1,5,5]
+66.10: [2,2,2,1,5,5]
+66.20: [2,2,2,1,5,5]
+66.30: [2,2,2,1,5,5]
+66.40: [2,2,2,1,5,5]
+66.50: [2,2,2,1,5,5]
+66.60: [2,2,2,1,5,5]
+66.70: [2,2,2,1,5,5]
+66.80: [2,2,2,5,5] 
+66.90: [2,2,2,5,5] 
+67.00: [2,2,2,5,5] 
+67.10: [2,2,2,5,5] 
+67.20: [2,2,2,5,5] 
+67.30: [2,2,2,5,5] 
+67.40: [3,2,2,5,5] 
+67.50: [3,2,2,5,5] 
+67.60: [3,2,2,5,5] 
+67.70: [3,2,2,5,5] 
+67.80: [3,2,2,5,5] 
+67.90: [3,2,2,5,5] 
+68.00: [3,2,2,5,5] 
+68.10: [3,2,2,5,5] 
+68.20: [3,2,2,5,5] 
+68.30: [3,2,2,5,5] 
+68.40: [3,2,2,5,5] 
+68.50: [3,2,2,5,5] 
+68.60: [3,2,2,5,5] 
+68.70: [3,2,2,5,5] 
+68.80: [3,2,2,5,5] 
+68.90: [3,2,2,5,5] 
+69.00: [3,2,2,5,5] 
+69.10: [3,2,2,5,5] 
+69.20: [3,2,2,5,5] 
+69.30: [3,2,2,5,5] 
+69.40: [3,2,2,5,5] 
+69.50: [3,2,2,5,5] 
+69.60: [3,2,2,4,5] 
+
+

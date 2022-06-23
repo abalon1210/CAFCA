@@ -1,0 +1,14 @@
+configName      Class 6 - MERGE (Collision - 4650)
+
+timeStep    vehId          fromState                     toState                       commandSent    receiverId     senderPltId    receiverPltId    maneuverStartEnd 
+          
+65.05       veh1.4         state_sendMergeReq            state_waitForMergeReply       MERGE_REQ      veh1           veh1.4         veh1             Merge_Request    
+65.06       veh1           state_sendMergeAccept         state_waitForMergeDone        MERGE_ACCEPT   veh1.4         veh1           veh1.4           -                
+70.06       veh1           state_sendMergeAccept         state_waitForMergeDone        MERGE_ACCEPT   veh1.4         veh1           veh1.4           -                
+75.06       veh1           state_sendMergeAccept         state_waitForMergeDone        MERGE_ACCEPT   veh1.4         veh1           veh1.4           -                
+80.06       veh1           state_sendMergeAccept         state_waitForMergeDone        MERGE_ACCEPT   veh1.4         veh1           veh1.4           -                
+85.06       veh1           state_sendMergeAccept         state_waitForMergeDone        MERGE_ACCEPT   veh1.4         veh1           veh1.4           -                
+90.06       veh1           state_sendMergeAccept         state_waitForMergeDone        MERGE_ACCEPT   veh1.4         veh1           veh1.4           -                
+95.06       veh1           state_sendMergeAccept         state_waitForMergeDone        MERGE_ACCEPT   veh1.4         veh1           veh1.4           -                
+
+64.00: [2,2,2,3,1,3,5,5] 
