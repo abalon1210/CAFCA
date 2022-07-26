@@ -1489,7 +1489,7 @@ def DisCrimPattern(candidate_patterns, cluster, PIM_Batch, APPR_THRESHOLD, d_thr
       if CAFCASimCal(pattern, im, d_threshold) > APPR_THRESHOLD:
         O_p += 1
     GR_values.append((O_f / len(cluster) / (O_p / len(PIM_Batch))))
-    
+
   GR_values = np.array(GR_values)
   return candidate_patterns[np.argmax(GR_values)]
 
