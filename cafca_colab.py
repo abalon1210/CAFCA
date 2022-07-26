@@ -39,6 +39,7 @@ print('In Log Folder : ', os.listdir(LOG_PATH))
 def IMGenerator():
   IM = [] # A set of all interaction models ======> IM = [im0, im1, im2, im3, ...]
   FIM = [] # A set of failed interaction models
+  PIM = [] # A set of passed interaction models
   curnt_id = -1
 
   f = open(join(V_PATH, target_scenario+'_Verification_Results.csv')) # To check the Verification results
@@ -64,6 +65,8 @@ def IMGenerator():
         IM.append(copy.deepcopy(im))
         if im[1] == "FALSE":
           FIM.append(copy.deepcopy(im))
+        else:
+          PIM.append(copy.deepcopy(im))
       im.clear()
       if curnt_id != -1: # Check the progress in console
         print("> Finished\n")
@@ -205,7 +208,7 @@ def IMGenerator():
     IM.append(copy.deepcopy(im))
     if im[1] == "FALSE":
       FIM.append(copy.deepcopy(im))
-  return IM, FIM, classification_data
+  return IM, FIM, classification_data, PIM
 
 """## Interaction model txt Writer
 
@@ -1173,7 +1176,7 @@ def RunLogFaultFlagger(IM, classLogs):
 import random
 import math
 
-def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE, ideal_patterns, oracle_batch, IM_Index): # TODO cl_type: FCM, PFS (Picture Fuzzy Set), KS2M
+def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE, ideal_patterns, oracle_batch, IM_Index, PIM_Batch): # TODO cl_type: FCM, PFS (Picture Fuzzy Set), KS2M
   INIT_SIM_THRESHOLD = 0.3
   MAX_INIT_SIM_THRESHOLD = 0.5
   SENSITIVITY_THRESHOLD = 0.1
@@ -1368,10 +1371,16 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
       for j in range(C_VALUE):
         pattern = None
         random.shuffle(clusters[j]) # To make variation for the generated patterns
-        for i in range(len(clusters[j])):
-          pattern = GetPattern(pattern, clusters[j][i], DELAY_THRESHOLD, MIN_LEN_THRESHOLD)
-          # pattern = GetPatternWithoutEnv(pattern, clusters[j][i], DELAY_THRESHOLD, MIN_LEN_THRESHOLD)
-        patterns[j] = copy.deepcopy(pattern)
+        # Discriminative pattern mining
+        candidate_patterns = []
+        for i in range(0,len(clusters[j]),2):
+          if i+1 >= len(clusters[j]):
+            break
+          candidate_patterns.append(GetPattern(clusters[j][i], clusters[j][i+1], DELAY_THRESHOLD, MIN_LEN_THRESHOLD))
+        patterns[j] = copy.deepcopy(DisCrimPattern(candidate_patterns, clusters[j], PIM_Batch, 0.8)) # APPEARANCE_THRESHOLD
+        # for i in range(len(clusters[j])):
+        #   pattern = GetPattern(pattern, clusters[j][i], DELAY_THRESHOLD, MIN_LEN_THRESHOLD)
+        # patterns[j] = copy.deepcopy(pattern)
     print("============== Patterns Updated")
     # print(patterns)
 
@@ -1466,6 +1475,23 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
   f.write(str(silhouette) + "\n")
   f.close()
   return patterns, clusters
+
+def DisCrimPattern(candidate_patterns, cluster, PIM_Batch, APPR_THRESHOLD, d_threshold):
+  GR_values = []
+
+  for pattern in candidate_patterns:
+    O_f = 0
+    O_p = 0
+    for im in cluster: # Appearance checking on the failed & belonged cluster
+      if CAFCASimCal(pattern, im,d_threshold) > APPR_THRESHOLD:
+        O_f += 1
+    for im in PIM_Batch: # Appearance checking on the passed logs
+      if CAFCASimCal(pattern, im, d_threshold) > APPR_THRESHOLD:
+        O_p += 1
+    GR_values.append((O_f / len(cluster) / (O_p / len(PIM_Batch))))
+    
+  GR_values = np.array(GR_values)
+  return candidate_patterns[np.argmax(GR_values)]
 
 def Silhouette(simvalues_item, IM_, clusters):
   ret = 0.0
@@ -1903,9 +1929,10 @@ def EvaluateF1P(oracle,index,cluster): #oracle: [[str]], index: [str], cluster: 
 
     return ret
 
-def RunFCM(IM_, oracle, exp_type): # exp_type : 0 -> OSR 1 -> COLL
+def RunFCM(IM_, oracle, exp_type, PIM_): # exp_type : 0 -> OSR 1 -> COLL
   # IM Selection (Random)
   nIM_ = np.array(IM_)
+  nPIM_ = np.array(PIM_)
   j = 1
   for i in range(12):
     if exp_type == 0:
@@ -1951,6 +1978,8 @@ def RunFCM(IM_, oracle, exp_type): # exp_type : 0 -> OSR 1 -> COLL
       IM_Batch = np.array(IM_Batch)
     ideal_patterns = IdealPatternReader()[:-2]
 
+    np.random.shuffle(nPIM_)
+    PIM_Batch = nPIM_[0:1000]
     # Run FCM with hyperparam settings
     # for DELAY_THRESHOLD in range(1, 11):
     # start_time = time.time()
@@ -1958,9 +1987,9 @@ def RunFCM(IM_, oracle, exp_type): # exp_type : 0 -> OSR 1 -> COLL
     if i != 0 and i % 3 == 0:
       j += 1
     if exp_type == 0: # OSR // 0: FCM, 1: CAFCA, 2:KS2M
-      patterns, clusters = FCM(1, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle_batch, IM_Index)
+      patterns, clusters = FCM(1, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle_batch, IM_Index, PIM_Batch)
     elif exp_type == 1: # COLL // 0: FCM, 1: CAFCA, 2:KS2M
-      patterns, clusters = FCM(1, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle, IM_Index)
+      patterns, clusters = FCM(1, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle, IM_Index, PIM_Batch)
     # end_time = time.time()
 
   # Evaluate the pattern mining & clustering results
@@ -1981,7 +2010,7 @@ def RunFCM(IM_, oracle, exp_type): # exp_type : 0 -> OSR 1 -> COLL
   # f.close()
 
 def main():
-  IM, FIM, classification_data = IMGenerator()
+  IM, FIM, classification_data, PIM = IMGenerator()
   # IMtoTxt(IM,'InteractionModels.txt')
   # IMtoTxt(FIM, 'FailedInteractionModels.txt')
   # FIM = TxttoIM('FailedInteractionModels.txt')
@@ -1989,7 +2018,7 @@ def main():
   # RunSPADE(FIM)
   # RunLogLiner(FIM, classification_data)
   # RunFCM(FIM, classification_data[:-2], 1) # 0 : OSR, 1 : COLL
-  RunFCM(FIM, classification_data, 0)
+  RunFCM(FIM, classification_data, 0, PIM)
 
 if __name__ == "__main__":
   main()
