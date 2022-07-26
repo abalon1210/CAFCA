@@ -29,7 +29,7 @@ from numpy.linalg import norm
 # import torch
 
 target_scenario = 'OP_SUCCESS_RATE'  # INPUT: OP_SUCCESS_RATE or COLLISION
-LOG_PATH = 'C:/Users/Hyun/IdeaProjects/StarPlateS/SoS_Extension/logs_full'
+LOG_PATH = 'C:/Users/Hyun/IdeaProjects/StarPlateS/SoS_Extension/logs_full/sample'
 V_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA'
 IDEAL_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA/Ideal/OSR'
 
@@ -1983,11 +1983,11 @@ def RunFCM(IM_, oracle, exp_type, PIM_): # exp_type : 0 -> OSR 1 -> COLL
     # Run FCM with hyperparam settings
     # for DELAY_THRESHOLD in range(1, 11):
     # start_time = time.time()
-    C_VALUE = 2
+
     if i != 0 and i % 3 == 0:
       j += 1
     if exp_type == 0: # OSR // 0: FCM, 1: CAFCA, 2:KS2M
-      patterns, clusters = FCM(1, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle_batch, IM_Index, PIM_Batch)
+      patterns, clusters = FCM(0, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle_batch, IM_Index, PIM_Batch)
     elif exp_type == 1: # COLL // 0: FCM, 1: CAFCA, 2:KS2M
       patterns, clusters = FCM(1, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle, IM_Index, PIM_Batch)
     # end_time = time.time()
