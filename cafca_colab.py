@@ -208,6 +208,8 @@ def IMGenerator():
     IM.append(copy.deepcopy(im))
     if im[1] == "FALSE":
       FIM.append(copy.deepcopy(im))
+    else:
+      PIM.append(copy.deepcopy(im))
   return IM, FIM, classification_data, PIM
 
 """## Interaction model txt Writer
@@ -1262,7 +1264,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
 
   print("============== Initial Patterns Selected ==============")
   prev_objs = -1 # Sum of Squared Errors for Fuzzy C-means clustering
-  f = open(join(V_PATH, "OSR_CAFCA_p_8_q_2_.csv"), 'a')
+  f = open(join(V_PATH, "OSR_FCM_testing.csv"), 'a')
   while iterations < MAX_ITERATION:
     print("============== Iterations: " + str(iterations))
     start_time = time.time()
@@ -1377,7 +1379,10 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
           if i+1 >= len(clusters[j]):
             break
           candidate_patterns.append(GetPattern(clusters[j][i], clusters[j][i+1], DELAY_THRESHOLD, MIN_LEN_THRESHOLD))
-        patterns[j] = copy.deepcopy(DisCrimPattern(candidate_patterns, clusters[j], PIM_Batch, 0.8)) # APPEARANCE_THRESHOLD
+        if len(candidate_patterns) == 0:
+          patterns[j] = copy.deepcopy(clusters[j][i])
+        else:
+          patterns[j] = copy.deepcopy(DisCrimPattern(candidate_patterns, clusters[j], PIM_Batch, 0.8, DELAY_THRESHOLD)) # APPEARANCE_THRESHOLD
         # for i in range(len(clusters[j])):
         #   pattern = GetPattern(pattern, clusters[j][i], DELAY_THRESHOLD, MIN_LEN_THRESHOLD)
         # patterns[j] = copy.deepcopy(pattern)
@@ -1483,12 +1488,17 @@ def DisCrimPattern(candidate_patterns, cluster, PIM_Batch, APPR_THRESHOLD, d_thr
     O_f = 0
     O_p = 0
     for im in cluster: # Appearance checking on the failed & belonged cluster
-      if CAFCASimCal(pattern, im,d_threshold) > APPR_THRESHOLD:
+      temp = CAFCASimCal(pattern, im,d_threshold)
+      if temp > APPR_THRESHOLD:
         O_f += 1
     for im in PIM_Batch: # Appearance checking on the passed logs
-      if CAFCASimCal(pattern, im, d_threshold) > APPR_THRESHOLD:
+      temp = CAFCASimCal(pattern, im, d_threshold)
+      if temp > APPR_THRESHOLD:
         O_p += 1
-    GR_values.append((O_f / len(cluster) / (O_p / len(PIM_Batch))))
+    if O_p == 0:
+      GR_values.append(1)
+    else:
+      GR_values.append((O_f / len(cluster) / (O_p / len(PIM_Batch))))
 
   GR_values = np.array(GR_values)
   return candidate_patterns[np.argmax(GR_values)]
