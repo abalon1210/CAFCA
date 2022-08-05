@@ -1360,6 +1360,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
 
     # Pattern update
     patterns.fill(None)
+    GR_values = []
     if cl_type == 3:
       p = 0.2
       q = 0.8
@@ -1382,7 +1383,9 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
         if len(candidate_patterns) == 0:
           patterns[j] = copy.deepcopy(clusters[j][i])
         else:
-          patterns[j] = copy.deepcopy(DisCrimPattern(candidate_patterns, clusters[j], PIM_Batch, 0.8, DELAY_THRESHOLD)) # APPEARANCE_THRESHOLD
+          pattern, gr_value = DisCrimPattern(candidate_patterns, clusters[j], PIM_Batch, 0.8, DELAY_THRESHOLD) # APPEARANCE_THRESHOLD
+          patterns[j] = copy.deepcopy(pattern)
+          GR_values.append(gr_value)
         # for i in range(len(clusters[j])):
         #   pattern = GetPattern(pattern, clusters[j][i], DELAY_THRESHOLD, MIN_LEN_THRESHOLD)
         # patterns[j] = copy.deepcopy(pattern)
@@ -1446,7 +1449,12 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
     for val in pitw:
       if not val is None:
         pitw_sum += val
-    print("d_threshold:" + str(DELAY_THRESHOLD) + ", " + "sim_threshold:" + str(SIM_THRESHOLD) + ", " + "iterations:" + str(iterations) + ", objs:" + str(objs) + "==> PIT:" + str(pit_sum) + ", PITW:" + str(pitw_sum) + ", F1P:" + str(f1p[-1]) + ", Time:" + str((end_time - start_time)))
+
+    gr_result = ""
+    for value in GR_values:
+      gr_result += value + ","
+    gr_result = gr_result[:-1]
+    print("d_threshold:" + str(DELAY_THRESHOLD) + ", " + "sim_threshold:" + str(SIM_THRESHOLD) + ", " + "iterations:" + str(iterations) + ", objs:" + str(objs) + "==> PIT:" + str(pit_sum) + ", PITW:" + str(pitw_sum) + ", F1P:" + str(f1p[-1]) + ", GR_Value:" + gr_result + ", Time:" + str((end_time - start_time)))
 
     ret = ""
     ret_pit = ""
@@ -1455,7 +1463,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
     ret_pitw = ""
     for val in pitw:
       ret_pitw += str(val) + ","
-    ret += str(DELAY_THRESHOLD) + ", " + str(SIM_THRESHOLD) + ", " + str(iterations) + ", " + str(objs) + "," + str(pit_sum) + "," + ret_pit + str(pitw_sum) + "," + ret_pitw + str(f1p[-1]) + "," + (
+    ret += str(DELAY_THRESHOLD) + ", " + str(SIM_THRESHOLD) + ", " + str(iterations) + ", " + str(objs) + "," + str(pit_sum) + "," + ret_pit + str(pitw_sum) + "," + ret_pitw + str(f1p[-1]) + "," + gr_result  +  "," +(
               str(end_time - start_time)) + "\n"
 
     if prev_objs != -1 and abs(objs - prev_objs) < SENSITIVITY_THRESHOLD:
@@ -1501,7 +1509,7 @@ def DisCrimPattern(candidate_patterns, cluster, PIM_Batch, APPR_THRESHOLD, d_thr
       GR_values.append((O_f / len(cluster) / (O_p / len(PIM_Batch))))
 
   GR_values = np.array(GR_values)
-  return candidate_patterns[np.argmax(GR_values)]
+  return candidate_patterns[np.argmax(GR_values)], np.max(GR_values)
 
 def Silhouette(simvalues_item, IM_, clusters):
   ret = 0.0
