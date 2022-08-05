@@ -1451,6 +1451,8 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
         pitw_sum += val
 
     gr_result = ""
+    if len(GR_values) == 0:
+      GR_valeus = DisCrimPatternEval(patterns, PIM_Batch, 0.8, DELAY_THRESHOLD)
     for value in GR_values:
       gr_result += value + ","
     gr_result = gr_result[:-1]
@@ -1488,6 +1490,26 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
   f.write(str(silhouette) + "\n")
   f.close()
   return patterns, clusters
+
+def DisCrimPatternEval(patterns, cluster, PIM_Batch, APPR_THRESHOLD, d_threshold):
+  GR_values = []
+  for pattern in patterns:
+    O_f = 0
+    O_p = 0
+    for im in cluster: # Appearance checking on the failed & belonged cluster
+      temp = CAFCASimCal(pattern, im,d_threshold)
+      if temp > APPR_THRESHOLD:
+        O_f += 1
+    for im in PIM_Batch: # Appearance checking on the passed logs
+      temp = CAFCASimCal(pattern, im, d_threshold)
+      if temp > APPR_THRESHOLD:
+        O_p += 1
+    if O_p == 0:
+      GR_values.append(1)
+    else:
+      GR_values.append((O_f / len(cluster) / (O_p / len(PIM_Batch))))
+
+  return GR_values
 
 def DisCrimPattern(candidate_patterns, cluster, PIM_Batch, APPR_THRESHOLD, d_threshold):
   GR_values = []
