@@ -1177,7 +1177,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
   INIT_SIM_THRESHOLD = 0.3
   MAX_INIT_SIM_THRESHOLD = 0.5
   SENSITIVITY_THRESHOLD = 0.1
-  MAX_ITERATION = 20
+  MAX_ITERATION = 10
   m = 2 # Fuzzy value
 
   simvalues = np.zeros((len(IM_),C_VALUE))
@@ -1476,6 +1476,8 @@ def Silhouette(simvalues_item, IM_, clusters):
     b_list = []
     for j in range(len(clusters)):
       temp = 0.0
+      if len(clusters[j]) == 0:
+        continue
       for clustered_im in clusters[j]:
         index = GetIMIndex(clustered_im, IM_)
         if k < index:
@@ -1651,8 +1653,8 @@ def PIT(ideal_patterns, patterns, d_threshold, oracle_batch):
         for state_a, state_b in zip(id_pattern[3], gen_pattern[3]):
             env_sim.append(EnvStateComparePIT(state_a, state_b))
       if len(env_sim) != 0:
-        if max_PIT < (len(lcs) / len(id_pattern[2])) * 0.2 + np.nanmean(env_sim) * 0.8:
-          max_PIT = (len(lcs) / len(id_pattern[2])) * 0.2 + np.nanmean(env_sim) * 0.8
+        if max_PIT < (len(lcs) / len(id_pattern[2])) * 0.8 + np.nanmean(env_sim) * 0.2:
+          max_PIT = (len(lcs) / len(id_pattern[2])) * 0.8 + np.nanmean(env_sim) * 0.2
           # matched_id = idx_gen
       else:
         if max_PIT < (len(lcs) / len(id_pattern[2])):
@@ -1690,7 +1692,7 @@ def PITW(ideal_patterns, patterns, d_threshold, oracle_batch):
         for state_a, state_b in zip(id_pattern[3], gen_pattern[3]):
           env_sim.append(EnvStateComparePIT(state_a, state_b))
       if len(env_sim) != 0:
-        PITW = ((len(lcs) + weight_lcs) / (len(id_pattern[2]) + weight_id)) * 0.2 + np.nanmean(env_sim) * 0.8
+        PITW = ((len(lcs) + weight_lcs) / (len(id_pattern[2]) + weight_id)) * 0.8 + np.nanmean(env_sim) * 0.2
       else:
         PITW = ((len(lcs) + weight_lcs) / (len(id_pattern[2]) + weight_id))
       if max_PITW < PITW:
@@ -1910,7 +1912,7 @@ def RunFCM(IM_, oracle, exp_type): # exp_type : 0 -> OSR 1 -> COLL
   for i in range(12):
     if exp_type == 0:
       np.random.shuffle(nIM_)
-      IM_Batch = nIM_[0:1000]
+      IM_Batch = nIM_[0:100]
       IM_Index = []
       for im in IM_Batch:
         IM_Index.append(im[0])
@@ -1954,7 +1956,7 @@ def RunFCM(IM_, oracle, exp_type): # exp_type : 0 -> OSR 1 -> COLL
     # Run FCM with hyperparam settings
     # for DELAY_THRESHOLD in range(1, 11):
     # start_time = time.time()
-    C_VALUE = 2
+    C_VALUE = 15
     if i != 0 and i % 3 == 0:
       j += 1
     if exp_type == 0: # OSR // 0: FCM, 1: CAFCA, 2:KS2M
