@@ -1454,7 +1454,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
     if len(GR_values) == 0:
       GR_valeus = DisCrimPatternEval(patterns, PIM_Batch, 0.8, DELAY_THRESHOLD)
     for value in GR_values:
-      gr_result += value + ","
+      gr_result += str(value) + ","
     gr_result = gr_result[:-1]
     print("d_threshold:" + str(DELAY_THRESHOLD) + ", " + "sim_threshold:" + str(SIM_THRESHOLD) + ", " + "iterations:" + str(iterations) + ", objs:" + str(objs) + "==> PIT:" + str(pit_sum) + ", PITW:" + str(pitw_sum) + ", F1P:" + str(f1p[-1]) + ", GR_Value:" + gr_result + ", Time:" + str((end_time - start_time)))
 
