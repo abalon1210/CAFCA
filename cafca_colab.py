@@ -1181,7 +1181,7 @@ import math
 def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE, ideal_patterns, oracle_batch, IM_Index, PIM_Batch): # TODO cl_type: FCM, PFS (Picture Fuzzy Set), KS2M
   INIT_SIM_THRESHOLD = 0.3
   MAX_INIT_SIM_THRESHOLD = 0.5
-  SENSITIVITY_THRESHOLD = 0.1
+  SENSITIVITY_THRESHOLD = 0.01
   MAX_ITERATION = 20
   m = 2 # Fuzzy value
 
@@ -1947,7 +1947,7 @@ def RunFCM(IM_, oracle, exp_type, PIM_): # exp_type : 0 -> OSR 1 -> COLL
   for i in range(12):
     if exp_type == 0:
       np.random.shuffle(nIM_)
-      IM_Batch = nIM_[0:1000]
+      IM_Batch = nIM_[0:100]
       IM_Index = []
       for im in IM_Batch:
         IM_Index.append(im[0])
@@ -1989,7 +1989,7 @@ def RunFCM(IM_, oracle, exp_type, PIM_): # exp_type : 0 -> OSR 1 -> COLL
     ideal_patterns = IdealPatternReader()[:-2]
 
     np.random.shuffle(nPIM_)
-    PIM_Batch = nPIM_[0:1000]
+    PIM_Batch = nPIM_[0:100]
     # Run FCM with hyperparam settings
     # for DELAY_THRESHOLD in range(1, 11):
     # start_time = time.time()
