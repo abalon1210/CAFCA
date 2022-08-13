@@ -1476,6 +1476,8 @@ def Silhouette(simvalues_item, IM_, clusters):
     b_list = []
     for j in range(len(clusters)):
       temp = 0.0
+      if len(clusters[j]) == 0:
+        continue
       for clustered_im in clusters[j]:
         index = GetIMIndex(clustered_im, IM_)
         if k < index:
@@ -1910,7 +1912,7 @@ def RunFCM(IM_, oracle, exp_type): # exp_type : 0 -> OSR 1 -> COLL
   for i in range(12):
     if exp_type == 0:
       np.random.shuffle(nIM_)
-      IM_Batch = nIM_[0:1000]
+      IM_Batch = nIM_[0:100]
       IM_Index = []
       for im in IM_Batch:
         IM_Index.append(im[0])
@@ -1954,7 +1956,7 @@ def RunFCM(IM_, oracle, exp_type): # exp_type : 0 -> OSR 1 -> COLL
     # Run FCM with hyperparam settings
     # for DELAY_THRESHOLD in range(1, 11):
     # start_time = time.time()
-    C_VALUE = 2
+    C_VALUE = 15
     if i != 0 and i % 3 == 0:
       j += 1
     if exp_type == 0: # OSR // 0: FCM, 1: CAFCA, 2:KS2M
