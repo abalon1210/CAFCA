@@ -28,10 +28,10 @@ from numpy import dot
 from numpy.linalg import norm
 # import torch
 
-target_scenario = 'OP_SUCCESS_RATE'  # INPUT: OP_SUCCESS_RATE or COLLISION
+target_scenario = 'COLLISION'  # INPUT: OP_SUCCESS_RATE or COLLISION
 LOG_PATH = 'C:/Users/Hyun/IdeaProjects/StarPlateS/SoS_Extension/logs_full'
 V_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA'
-IDEAL_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA/Ideal/OSR'
+IDEAL_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA/Ideal/Collision'
 
 print('In Log Folder : ', os.listdir(LOG_PATH))
 
@@ -1264,7 +1264,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
 
   print("============== Initial Patterns Selected ==============")
   prev_objs = -1 # Sum of Squared Errors for Fuzzy C-means clustering
-  f = open(join(V_PATH, "OSR_CAFCA_DPM_p_8_q_2.csv"), 'a')
+  f = open(join(V_PATH, "COLL_CAFCA_DPM_p_8_q_2.csv"), 'a')
   while iterations < MAX_ITERATION:
     print("============== Iterations: " + str(iterations))
     start_time = time.time()
@@ -1996,6 +1996,7 @@ def RunFCM(IM_, oracle, exp_type, PIM_): # exp_type : 0 -> OSR 1 -> COLL
         if assign_flag:
           C_VALUE += 1
         oracle_batch.append(copy.deepcopy(cl_batch))
+      ideal_patterns = IdealPatternReader()
     else:
       np.random.shuffle(nIM_)
       IM_Batch = []
@@ -2018,7 +2019,7 @@ def RunFCM(IM_, oracle, exp_type, PIM_): # exp_type : 0 -> OSR 1 -> COLL
         if assign_flag:
           oracle_batch.append(copy.deepcopy(cl_batch))
       IM_Batch = np.array(IM_Batch)
-    ideal_patterns = IdealPatternReader()[:-2]
+      ideal_patterns = IdealPatternReader()[:-2]
 
     np.random.shuffle(nPIM_)
     PIM_Batch = nPIM_[0:100]
@@ -2060,7 +2061,7 @@ def main():
   # RunSPADE(FIM)
   # RunLogLiner(FIM, classification_data)
   # RunFCM(FIM, classification_data[:-2], 1) # 0 : OSR, 1 : COLL
-  RunFCM(FIM, classification_data, 0, PIM) # 0 : OSR, 1 : COLL
+  RunFCM(FIM, classification_data, 1, PIM) # 0 : OSR, 1 : COLL
 
 if __name__ == "__main__":
   main()
