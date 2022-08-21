@@ -394,8 +394,8 @@ def Quantification(distance): # 5: Very far / 4: Far / 3: Appropriate / 2: Close
 # Inputs: two models (pattern and input), d_threshold
 # Outputs: The most critical LCS among possible LCS generation sets, the LCS similarity value with the pattern and input models.
 def CAFCASimCal(im_pattern, im_input, d_threshold):
-  p = 0.8
-  q = 0.2
+  p = 0.2
+  q = 0.8
   generated_pattern, avg_env_sim = GetPatternSim(im_pattern, im_input, d_threshold)
   # generated_pattern, avg_env_sim = GetPatternSimWithoutEnv(im_pattern, im_input, d_threshold)
   # return p * (len(generated_pattern[2]) / (len(im_pattern[2]) * len(im_input[2]))) + q * avg_env_sim
@@ -1264,7 +1264,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
 
   print("============== Initial Patterns Selected ==============")
   prev_objs = -1 # Sum of Squared Errors for Fuzzy C-means clustering
-  f = open(join(V_PATH, "OSR_CAFCA_DPM_p_8_q_2.csv"), 'a')
+  f = open(join(V_PATH, "OSR_CAFCA_p_2_q_8_DPM_Eval.csv"), 'a')
   while iterations < MAX_ITERATION:
     print("============== Iterations: " + str(iterations))
     start_time = time.time()
@@ -1375,20 +1375,20 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
         pattern = None
         random.shuffle(clusters[j]) # To make variation for the generated patterns
         # Discriminative pattern mining
-        candidate_patterns = []
-        for i in range(0,len(clusters[j]),2):
-          if i+1 >= len(clusters[j]):
-            break
-          candidate_patterns.append(GetPattern(clusters[j][i], clusters[j][i+1], DELAY_THRESHOLD, MIN_LEN_THRESHOLD))
-        if len(candidate_patterns) == 0:
-          patterns[j] = copy.deepcopy(clusters[j][i])
-        else:
-          pattern, gr_value = DisCrimPattern(candidate_patterns, clusters[j], PIM_Batch, 0.8, DELAY_THRESHOLD) # APPEARANCE_THRESHOLD
-          patterns[j] = copy.deepcopy(pattern)
-          GR_values.append(gr_value)
-        # for i in range(len(clusters[j])):
-        #   pattern = GetPattern(pattern, clusters[j][i], DELAY_THRESHOLD, MIN_LEN_THRESHOLD)
-        # patterns[j] = copy.deepcopy(pattern)
+        # candidate_patterns = []
+        # for i in range(0,len(clusters[j]),2):
+        #   if i+1 >= len(clusters[j]):
+        #     break
+        #   candidate_patterns.append(GetPattern(clusters[j][i], clusters[j][i+1], DELAY_THRESHOLD, MIN_LEN_THRESHOLD))
+        # if len(candidate_patterns) == 0:
+        #   patterns[j] = copy.deepcopy(clusters[j][i])
+        # else:
+        #   pattern, gr_value = DisCrimPattern(candidate_patterns, clusters[j], PIM_Batch, 0.8, DELAY_THRESHOLD) # APPEARANCE_THRESHOLD
+        #   patterns[j] = copy.deepcopy(pattern)
+        #   GR_values.append(gr_value)
+        for i in range(len(clusters[j])):
+          pattern = GetPattern(pattern, clusters[j][i], DELAY_THRESHOLD, MIN_LEN_THRESHOLD)
+        patterns[j] = copy.deepcopy(pattern)
     print("============== Patterns Updated")
     # print(patterns)
 
@@ -1452,7 +1452,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
 
     gr_result = ""
     if len(GR_values) == 0:
-      GR_valeus = DisCrimPatternEval(patterns, PIM_Batch, 0.8, DELAY_THRESHOLD)
+      GR_values = DisCrimPatternEval(patterns, PIM_Batch, 0.8, DELAY_THRESHOLD)
     for value in GR_values:
       gr_result += str(value) + ","
     gr_result = gr_result[:-1]
@@ -1719,8 +1719,8 @@ def PIT(ideal_patterns, patterns, d_threshold, oracle_batch):
         for state_a, state_b in zip(id_pattern[3], gen_pattern[3]):
             env_sim.append(EnvStateComparePIT(state_a, state_b))
       if len(env_sim) != 0:
-        if max_PIT < (len(lcs) / len(id_pattern[2])) * 0.8 + np.nanmean(env_sim) * 0.2:
-          max_PIT = (len(lcs) / len(id_pattern[2])) * 0.8 + np.nanmean(env_sim) * 0.2
+        if max_PIT < (len(lcs) / len(id_pattern[2])) * 0.2 + np.nanmean(env_sim) * 0.8:
+          max_PIT = (len(lcs) / len(id_pattern[2])) * 0.2 + np.nanmean(env_sim) * 0.8
           # matched_id = idx_gen
       else:
         if max_PIT < (len(lcs) / len(id_pattern[2])):
@@ -1758,7 +1758,7 @@ def PITW(ideal_patterns, patterns, d_threshold, oracle_batch):
         for state_a, state_b in zip(id_pattern[3], gen_pattern[3]):
           env_sim.append(EnvStateComparePIT(state_a, state_b))
       if len(env_sim) != 0:
-        PITW = ((len(lcs) + weight_lcs) / (len(id_pattern[2]) + weight_id)) * 0.8 + np.nanmean(env_sim) * 0.2
+        PITW = ((len(lcs) + weight_lcs) / (len(id_pattern[2]) + weight_id)) * 0.2 + np.nanmean(env_sim) * 0.8
       else:
         PITW = ((len(lcs) + weight_lcs) / (len(id_pattern[2]) + weight_id))
       if max_PITW < PITW:
@@ -1996,6 +1996,7 @@ def RunFCM(IM_, oracle, exp_type, PIM_): # exp_type : 0 -> OSR 1 -> COLL
         if assign_flag:
           C_VALUE += 1
         oracle_batch.append(copy.deepcopy(cl_batch))
+      ideal_patterns = IdealPatternReader()
     else:
       np.random.shuffle(nIM_)
       IM_Batch = []
@@ -2018,7 +2019,7 @@ def RunFCM(IM_, oracle, exp_type, PIM_): # exp_type : 0 -> OSR 1 -> COLL
         if assign_flag:
           oracle_batch.append(copy.deepcopy(cl_batch))
       IM_Batch = np.array(IM_Batch)
-    ideal_patterns = IdealPatternReader()[:-2]
+      ideal_patterns = IdealPatternReader()[:-2]
 
     np.random.shuffle(nPIM_)
     PIM_Batch = nPIM_[0:100]
