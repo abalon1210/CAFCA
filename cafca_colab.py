@@ -2052,6 +2052,58 @@ def RunFCM(IM_, oracle, exp_type, PIM_): # exp_type : 0 -> OSR 1 -> COLL
   # f.write(ret)
   # f.close()
 
+def IMGeneratorDS():
+  IM = [] # A set of all interaction models ======> IM = [im0, im1, im2, im3, ...]
+  FIM = [] # A set of failed interaction models
+  PIM = [] # A set of passed interaction models
+  curnt_id = -1
+
+  im = [] # an interaction model ======> im = [file_id, P/F, Interaction, Env]
+  for filename, idx in enumerate(os.listdir(LOG_PATH)):
+    im.clear()
+    if curnt_id != -1:  # Check the progress in console
+      print("> Finished\n")
+    print("===========" + filename + ": Start =======")
+    # ======> File ID
+    curnt_id = idx
+    im.append(curnt_id)
+
+    # ======> P/F Tags
+    if '32' in filename or '64' in filename:
+      im.append("FALSE")
+    else:
+      im.append("TRUE")
+
+    # ======> No Interaction Messages in DroneSwarming Logs
+    im.append([])
+
+    # ======> Env = [state0, state1, state2, ...] ordered chronologically
+    env = []
+    ret = ""
+    f = open(join(LOG_PATH, filename), 'r')
+    lines = f.readlines()
+    for i in range(len(lines)):  # For each line in log file
+      line = lines[i]
+      state = []  # A single state (i.e. item) in a log file => [time, vel_x, vel_y, vel_z, distances]
+      distances = []
+      # vel_x, vel_y, vel_z => list
+      # distances => matrix
+      if len(line) == 1:
+        if len(state) == 0:
+          state.append(line)
+          count = 0
+        else:
+          state.append(distances)
+          env.append(copy.deepcopy(state))
+          state.clear()
+          state.append(line)
+          count = 0
+      if count < 3:
+        state.append(line)
+        count += 1
+      else:
+        distances.append(line)
+
 def main():
   IM, FIM, classification_data, PIM = IMGenerator()
   # IMtoTxt(IM,'InteractionModels.txt')
