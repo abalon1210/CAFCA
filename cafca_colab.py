@@ -2068,6 +2068,17 @@ def IMGeneratorDS():
     curnt_id = idx
     im.append(curnt_id)
 
+    ## TODO Classification_Results and data parsing
+    f = open(join(V_PATH, target_scenario + '_Classification_Results_Test.csv'),
+             encoding='UTF8')  # To get the classification results
+    c_results = f.readlines()
+    f.close()
+    classification_data = []
+    for line in c_results:
+      line = line.replace(",,", "")
+      line = line.replace("\n", "")
+      classification_data.append(line.split(','))
+
     # ======> P/F Tags
     if '32' in filename or '64' in filename:
       im.append("FALSE")
@@ -2103,6 +2114,14 @@ def IMGeneratorDS():
         count += 1
       else:
         distances.append(line)
+    if len(im) == 4:
+      IM.append(copy.deepcopy(im))
+      if im[1] == "FALSE":
+        FIM.append(copy.deepcopy(im))
+      else:
+        PIM.append(copy.deepcopy(im))
+
+    return IM, FIM, classification_data, PIM
 
 def main():
   IM, FIM, classification_data, PIM = IMGenerator()
