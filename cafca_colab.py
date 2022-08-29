@@ -793,6 +793,30 @@ def InteractionTWSlicer(im, s_time, e_time):
   ret[2] = ret_interaction
   return ret
 
+def GetPatternDrone(im_pattern, im_input, d_threshold):  # LCS pattern extraction function
+  if im_pattern is None:
+    return im_input
+  generated_lcs = []
+  generated_avg_env_sim = []
+  generated_env = []
+  ret = []  # returned pattern with the structure of im.
+  T = [25, 45, 65, 85]
+  for t in T:
+    for t_ in T:
+      generated_pattern, sliced_env, avg_env_sim = PatternExtractor(InteractionSeqSlicer(im_pattern, t),InteractionSeqSlicer(im_input, t_),d_threshold) or (None, None, None)
+      generated_lcs.append(generated_pattern)
+      generated_env.append(sliced_env)
+      generated_avg_env_sim.append(avg_env_sim)
+      if generated_pattern is None: # Don't need to check the other consecutive options if a None appears
+        break
+  max_LCS, max_env = GetMaxContentLCS(generated_lcs, generated_env)
+
+  ret.append(im_pattern[0])
+  ret.append(im_pattern[1])
+  ret.append(im_pattern[2]) # Anyway None in the drone scenario
+  ret.append(max_env)
+  return ret
+
 """### SPADE Pattern Mining
 
 """
@@ -1181,7 +1205,7 @@ import math
 def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE, ideal_patterns, oracle_batch, IM_Index, PIM_Batch): # TODO cl_type: FCM, PFS (Picture Fuzzy Set), KS2M
   INIT_SIM_THRESHOLD = 0.3
   MAX_INIT_SIM_THRESHOLD = 0.5
-  SENSITIVITY_THRESHOLD = 0.005
+  SENSITIVITY_THRESHOLD = 0.01
   MAX_ITERATION = 20
   m = 2 # Fuzzy value
 
@@ -1201,70 +1225,17 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
         elif k < l:
           simvalues_item[k][l] = CAFCASimCal(IM_[k], IM_[l], DELAY_THRESHOLD)
     diss_item = 1 - simvalues_item
-  if target_scenario == "COLL":
-    k = 4
-  else:
-    k = 12
-  # k_largest_index = np.column_stack(np.unravel_index(np.argpartition(diss_item.ravel(),diss_item.size-k)[-k:], diss_item.shape))
+
   print("============== FCM Run ==============")
   patterns = []
   index = np.random.choice(IM_.shape[0], C_VALUE, replace=False)
   for id in index:
     patterns.append(IM_[id])
   patterns = np.array(patterns)
-  # while True: # Initial selection of C models from the whole models
-  #   initial_sims = []
-  #   max_flag = True
-  #   patterns = []
-  #   # while len(patterns) < C_VALUE: # Select C numbers of models
-  #   #   item = IM_[random.randint(0,len(IM_)-1)]
-  #   #   if (item not in patterns).any():
-  #   #     patterns.append(item)
-  #   if cl_type == 0:
-  #     index = np.random.choice(IM_.shape[0], C_VALUE, replace=False)
-  #     for id in index:
-  #       patterns.append(IM_[id])
-  #     patterns = np.array(patterns)
-  #     for i in range(0, len(patterns)-1):
-  #       for j in range(i+1, len(patterns)):
-  #         init_sim_value = CAFCASimCal(patterns[i], patterns[j], DELAY_THRESHOLD) # Calculate the LCS_Sim values for each combination of initally selected models
-  #         if init_sim_value > MAX_INIT_SIM_THRESHOLD: # If two of them are highly simialr, choose the other models
-  #           max_flag = False
-  #           break
-  #         initial_sims.append(init_sim_value)
-  #       if not max_flag:
-  #         initial_sims.clear()
-  #         break
-  #     if max_flag and len(initial_sims) > 0 and sum(initial_sims)/len(initial_sims) < INIT_SIM_THRESHOLD: # If the average of the LCS_sim values of the models is non-acceptable, find other set of models
-  #       break
-  #   elif cl_type == 1 or cl_type == 2:
-  #     # index = np.unique(k_largest_index.ravel())[:C_VALUE]
-  #     print(diss_item)
-  #     index = np.random.choice(IM_.shape[0], C_VALUE, replace=False)
-  #     for id in index:
-  #       patterns.append(IM_[id])
-  #     patterns = np.array(patterns)
-  #     break
-      # print(k_largest_index)
-      # np.sort(index)
-      # for id in index:
-      #   patterns.append(IM_[id])
-      # patterns = np.array(patterns)
-      # for i in range(0, len(patterns)-1):
-      #   for j in range(i+1, len(patterns)):
-      #     if simvalues_item[index[i]][index[j]] > MAX_INIT_SIM_THRESHOLD: # If two of them are highly simialr, choose the other models
-      #       max_flag = False
-      #       break
-      #     initial_sims.append(simvalues_item[index[i]][index[j]])
-      #   if not max_flag:
-      #     initial_sims.clear()
-      #     break
-      # if max_flag and len(initial_sims) > 0: #and sum(initial_sims)/len(initial_sims) < INIT_SIM_THRESHOLD: # If the average of the LCS_sim values of the models is non-acceptable, find other set of models
-      #   break
 
   print("============== Initial Patterns Selected ==============")
   prev_objs = -1 # Sum of Squared Errors for Fuzzy C-means clustering
-  f = open(join(V_PATH, "COLL_CAFCA_DPM_p_8_q_2.csv"), 'a')
+  f = open(join(V_PATH, "DRONE_FCM_DPM_p_8_q_2.csv"), 'a')
   while iterations < MAX_ITERATION:
     print("============== Iterations: " + str(iterations))
     start_time = time.time()
@@ -1997,7 +1968,7 @@ def RunFCM(IM_, oracle, exp_type, PIM_): # exp_type : 0 -> OSR 1 -> COLL
           C_VALUE += 1
         oracle_batch.append(copy.deepcopy(cl_batch))
       ideal_patterns = IdealPatternReader()
-    else:
+    elif exp_type == 1:
       np.random.shuffle(nIM_)
       IM_Batch = []
       IM_Index = []
@@ -2020,6 +1991,19 @@ def RunFCM(IM_, oracle, exp_type, PIM_): # exp_type : 0 -> OSR 1 -> COLL
           oracle_batch.append(copy.deepcopy(cl_batch))
       IM_Batch = np.array(IM_Batch)
       ideal_patterns = IdealPatternReader()[:-2]
+    else:
+      np.random.shuffle(nIM_)
+      IM_Batch = []
+      IM_Index = []
+      oracle_batch = []
+      for im in nIM_:
+        for cl in oracle:
+          #TODO id parsing check
+          if str(im[0]) + "_0" in cl:
+            IM_Batch.append(im)
+            IM_Index.append(im[0])
+            break
+      IM_Batch = np.array(IM_Batch)
 
     np.random.shuffle(nPIM_)
     PIM_Batch = nPIM_[0:100]
@@ -2033,6 +2017,9 @@ def RunFCM(IM_, oracle, exp_type, PIM_): # exp_type : 0 -> OSR 1 -> COLL
       patterns, clusters = FCM(1, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle_batch, IM_Index, PIM_Batch)
     elif exp_type == 1: # COLL // 0: FCM, 1: CAFCA, 2:KS2M
       patterns, clusters = FCM(1, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle, IM_Index, PIM_Batch)
+    else: # COLL // 0: FCM, 1: CAFCA, 2:KS2M
+      for k in range(1,6):
+        patterns, clusters = FCM(0, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), k, ideal_patterns, oracle, IM_Index, PIM_Batch)
     # end_time = time.time()
 
   # Evaluate the pattern mining & clustering results
@@ -2086,7 +2073,7 @@ def IMGeneratorDS():
       im.append("TRUE")
 
     # ======> No Interaction Messages in DroneSwarming Logs
-    im.append([])
+    im.append(None)
 
     # ======> Env = [state0, state1, state2, ...] ordered chronologically
     env = []
@@ -2113,7 +2100,20 @@ def IMGeneratorDS():
         state.append(line)
         count += 1
       else:
-        distances.append(line)
+        temp = line.split(",")
+        # Quantification
+        for item, idx in enumerate(temp):
+          if float(item) < 1.00:
+            temp[idx] = 1
+          elif float(item) < 5.00:
+            temp[idx] = 2
+          elif float(item) < 10.00:
+            temp[idx] = 3
+          elif float(item) < 15.00:
+            temp[idx] = 4
+          else:
+            temp[idx] = 5
+        distances.append(copy.deepcopy(temp))
     if len(im) == 4:
       IM.append(copy.deepcopy(im))
       if im[1] == "FALSE":
@@ -2132,7 +2132,7 @@ def main():
   # RunSPADE(FIM)
   # RunLogLiner(FIM, classification_data)
   # RunFCM(FIM, classification_data[:-2], 1) # 0 : OSR, 1 : COLL
-  RunFCM(FIM, classification_data, 1, PIM) # 0 : OSR, 1 : COLL
+  RunFCM(FIM, classification_data, 1, PIM) # 0 : OSR, 1 : COLL, 2: Drone Swarming
 
 if __name__ == "__main__":
   main()
