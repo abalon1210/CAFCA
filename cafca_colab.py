@@ -816,7 +816,7 @@ def GetPatternDrone(im_pattern, im_input, env_sim_threshold, time_window_size): 
         for comb in temp_comb:
           env_sims_comb = []
           for i in range(len(num_drone_input)):
-            env_sims_comb.append(EnvSimCal(state_input(i), state_pattern(comb[i])))
+            env_sims_comb.append(EnvSimCalDrone(state_input(i), state_pattern(comb[i])))
           env_sims.append(sum(env_sims_comb) / len(env_sims_comb))
       else:
         temp = range(num_drone_input)
@@ -825,7 +825,7 @@ def GetPatternDrone(im_pattern, im_input, env_sim_threshold, time_window_size): 
         for comb in temp_comb:
           env_sims_comb = []
           for i in range(len(num_drone_pattern)):
-            env_sims_comb.append(EnvSimCal(state_pattern(i), state_input(comb[i])))
+            env_sims_comb.append(EnvSimCalDrone(state_pattern(i), state_input(comb[i])))
           env_sims.append(sum(env_sims_comb) / len(env_sims_comb))
       avg_env_sims.append(max(env_sims)) # Choose the max among the combination of drones in a collision
   max_env_sim = max(avg_env_sims) # Choose the max similarity value among the whole collision cases
@@ -841,6 +841,20 @@ def GetPatternDrone(im_pattern, im_input, env_sim_threshold, time_window_size): 
     return ret
   else:
     return None
+
+def EnvSimCalDrone(state_pattern, state_input):
+  # state = [distance_drone0_time0, distance_drone0_time_1, ... ]
+  # distance_drone0_time0 = [drone0_drone0, drone0_drone1, drone0_drone2, ... ]
+  ret_sims = []
+  for item_pattern in state_pattern:
+    for item_input in state_input:
+      # Item sorting
+      temp_pattern = item_pattern.sort()
+      temp_input = item_input.sort()
+      # Vector similarity calculation
+      ret_sims.append(cos_sim(temp_pattern, temp_input))
+
+  return sum(ret_sims) / len(ret_sims)
 
 def EnvSlicer(env, time, time_window_size):
   ret = []
