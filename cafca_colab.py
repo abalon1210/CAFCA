@@ -396,12 +396,14 @@ def Quantification(distance): # 5: Very far / 4: Far / 3: Appropriate / 2: Close
 def CAFCASimCal(im_pattern, im_input, d_threshold):
   p = 0.8
   q = 0.2
-  generated_pattern, avg_env_sim = GetPatternSim(im_pattern, im_input, d_threshold)
+  # generated_pattern, avg_env_sim = GetPatternSim(im_pattern, im_input, d_threshold)
+  generated_pattern, avg_env_sim = GetPatternDroneSim(im_pattern, im_input, 0.8, 5.0)
   # generated_pattern, avg_env_sim = GetPatternSimWithoutEnv(im_pattern, im_input, d_threshold)
   # return p * (len(generated_pattern[2]) / (len(im_pattern[2]) * len(im_input[2]))) + q * avg_env_sim
   if generated_pattern[2] is None:
     return 0
-  return p * (len(generated_pattern[2]) / len(im_pattern[2])) + q * avg_env_sim
+  return avg_env_sim
+  # return p * (len(generated_pattern[2]) / len(im_pattern[2])) + q * avg_env_sim
 
 def PatternExtractor(im_pattern, im_input, d_threshold):
   if im_pattern is None or im_input is None or im_pattern[2] is None or im_input[2] is None or im_pattern[3] is None or im_input[3] is None:
@@ -841,6 +843,51 @@ def GetPatternDrone(im_pattern, im_input, env_sim_threshold, time_window_size): 
     return ret
   else:
     return None
+
+  def GetPatternDroneSim(im_pattern, im_input, env_sim_threshold, time_window_size):  # LCS pattern extraction function
+    if im_pattern is None:
+      return im_input
+
+    # [[time1, id1, related_dist1, id2, related_dist2, ...], [time2, id3, related_dist3, id4, related_dist4, ...], ...]
+    drone_pattern = DroneCollisionChecker(im_pattern[3], time_window_size)
+    drone_input = DroneCollisionChecker(im_input[3], time_window_size)
+    ret = []  # returned pattern with the structure of im.
+
+    avg_env_sims = []
+    for state_pattern in range(drone_pattern):  # state = a single collision information
+      for state_input in range(drone_input):
+        num_drone_pattern = (len(state_pattern) - 1) / 2
+        num_drone_input = (len(state_input) - 1) / 2
+        env_sims = []
+        if num_drone_pattern > num_drone_input:
+          temp = range(num_drone_pattern)
+          temp_comb = list(itertools.combinations(temp))  # list(itertools.permutations(temp))
+          # E.g., temp_comb = [(0,1), (0,2), (1,2)]
+          for comb in temp_comb:
+            env_sims_comb = []
+            for i in range(len(num_drone_input)):
+              env_sims_comb.append(EnvSimCalDrone(state_input(i), state_pattern(comb[i])))
+            env_sims.append(sum(env_sims_comb) / len(env_sims_comb))
+        else:
+          temp = range(num_drone_input)
+          temp_comb = list(itertools.combinations(temp))  # list(itertools.permutations(temp))
+
+          for comb in temp_comb:
+            env_sims_comb = []
+            for i in range(len(num_drone_pattern)):
+              env_sims_comb.append(EnvSimCalDrone(state_pattern(i), state_input(comb[i])))
+            env_sims.append(sum(env_sims_comb) / len(env_sims_comb))
+        avg_env_sims.append(max(env_sims))  # Choose the max among the combination of drones in a collision
+    max_env_sim = max(avg_env_sims)  # Choose the max similarity value among the whole collision cases
+    max_time = drone_pattern[avg_env_sims.index(max_env_sim) / len(drone_input)][0]
+
+    env_pattern = EnvSlicer(im_pattern[3], max_time, time_window_size)
+
+    ret.append(im_pattern[0])
+    ret.append(im_pattern[1])
+    ret.append(im_pattern[2])  # Anyway None in the drone scenario
+    ret.append(env_pattern)
+    return ret, max_env_sim
 
 def EnvSimCalDrone(state_pattern, state_input):
   # state = [distance_drone0_time0, distance_drone0_time_1, ... ]
@@ -1425,20 +1472,20 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
         pattern = None
         random.shuffle(clusters[j]) # To make variation for the generated patterns
         # Discriminative pattern mining
-        candidate_patterns = []
-        for i in range(0,len(clusters[j]),2):
-          if i+1 >= len(clusters[j]):
-            break
-          candidate_patterns.append(GetPattern(clusters[j][i], clusters[j][i+1], DELAY_THRESHOLD, MIN_LEN_THRESHOLD))
-        if len(candidate_patterns) == 0:
-          patterns[j] = copy.deepcopy(clusters[j][i])
-        else:
-          pattern, gr_value = DisCrimPattern(candidate_patterns, clusters[j], PIM_Batch, 0.8, DELAY_THRESHOLD) # APPEARANCE_THRESHOLD
-          patterns[j] = copy.deepcopy(pattern)
-          GR_values.append(gr_value)
-        # for i in range(len(clusters[j])):
-        #   pattern = GetPattern(pattern, clusters[j][i], DELAY_THRESHOLD, MIN_LEN_THRESHOLD)
-        # patterns[j] = copy.deepcopy(pattern)
+        # candidate_patterns = []
+        # for i in range(0,len(clusters[j]),2):
+        #   if i+1 >= len(clusters[j]):
+        #     break
+        #   candidate_patterns.append(GetPattern(clusters[j][i], clusters[j][i+1], DELAY_THRESHOLD, MIN_LEN_THRESHOLD))
+        # if len(candidate_patterns) == 0:
+        #   patterns[j] = copy.deepcopy(clusters[j][i])
+        # else:
+        #   pattern, gr_value = DisCrimPattern(candidate_patterns, clusters[j], PIM_Batch, 0.8, DELAY_THRESHOLD) # APPEARANCE_THRESHOLD
+        #   patterns[j] = copy.deepcopy(pattern)
+        #   GR_values.append(gr_value)
+        for i in range(len(clusters[j])):
+          pattern = GetPatternDrone(pattern, clusters[j][i], 0.8, 5.0)
+        patterns[j] = copy.deepcopy(pattern)
     print("============== Patterns Updated")
     # print(patterns)
 
@@ -1487,36 +1534,36 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
     #   objs += val / 2 * denom
 
     # Evaluate the pattern mining & clustering results & Save them
-    pit = PIT(ideal_patterns, patterns, 0.05, oracle_batch)
-    pitw = PITW(ideal_patterns, patterns, 0.05, oracle_batch)
-    f1p = EvaluateF1P(oracle_batch, IM_Index, clusters)
-    pit_sum = 0
-    for val in pit:
-      if not val is None:
-        pit_sum += val
-
-    pitw_sum = 0
-    for val in pitw:
-      if not val is None:
-        pitw_sum += val
+    # pit = PIT(ideal_patterns, patterns, 0.05, oracle_batch)
+    # pitw = PITW(ideal_patterns, patterns, 0.05, oracle_batch)
+    # f1p = EvaluateF1P(oracle_batch, IM_Index, clusters)
+    # pit_sum = 0
+    # for val in pit:
+    #   if not val is None:
+    #     pit_sum += val
+    #
+    # pitw_sum = 0
+    # for val in pitw:
+    #   if not val is None:
+    #     pitw_sum += val
 
     gr_result = ""
     if len(GR_values) == 0:
-      GR_valeus = DisCrimPatternEval(patterns, PIM_Batch, 0.8, DELAY_THRESHOLD)
+      GR_values = DisCrimPatternEval(patterns, PIM_Batch, 0.8, DELAY_THRESHOLD)
     for value in GR_values:
       gr_result += str(value) + ","
     gr_result = gr_result[:-1]
-    print("d_threshold:" + str(DELAY_THRESHOLD) + ", " + "sim_threshold:" + str(SIM_THRESHOLD) + ", " + "iterations:" + str(iterations) + ", objs:" + str(objs) + "==> PIT:" + str(pit_sum) + ", PITW:" + str(pitw_sum) + ", F1P:" + str(f1p[-1]) + ", GR_Value:" + gr_result + ", Time:" + str((end_time - start_time)))
+    # print("d_threshold:" + str(DELAY_THRESHOLD) + ", " + "sim_threshold:" + str(SIM_THRESHOLD) + ", " + "iterations:" + str(iterations) + ", objs:" + str(objs) + "==> PIT:" + str(pit_sum) + ", PITW:" + str(pitw_sum) + ", F1P:" + str(f1p[-1]) + ", GR_Value:" + gr_result + ", Time:" + str((end_time - start_time)))
 
     ret = ""
     ret_pit = ""
-    for val in pit:
-      ret_pit += str(val) + ","
-    ret_pitw = ""
-    for val in pitw:
-      ret_pitw += str(val) + ","
-    ret += str(DELAY_THRESHOLD) + ", " + str(SIM_THRESHOLD) + ", " + str(iterations) + ", " + str(objs) + "," + str(pit_sum) + "," + ret_pit + str(pitw_sum) + "," + ret_pitw + str(f1p[-1]) + "," + gr_result  +  "," +(
-              str(end_time - start_time)) + "\n"
+    # for val in pit:
+    #   ret_pit += str(val) + ","
+    # ret_pitw = ""
+    # for val in pitw:
+    #   ret_pitw += str(val) + ","
+    # ret += str(DELAY_THRESHOLD) + ", " + str(SIM_THRESHOLD) + ", " + str(iterations) + ", " + str(objs) + "," + str(pit_sum) + "," + ret_pit + str(pitw_sum) + "," + ret_pitw + str(f1p[-1]) + "," + gr_result  +  "," +(
+    #           str(end_time - start_time)) + "\n"
 
     if prev_objs != -1 and abs(objs - prev_objs) < SENSITIVITY_THRESHOLD:
       break
@@ -1539,6 +1586,8 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
   silhouette = Silhouette(simvalues_item, IM_, clusters)
   f.write(str(silhouette) + "\n")
   f.close()
+  print(patterns)
+  print(clusters)
   return patterns, clusters
 
 def DisCrimPatternEval(patterns, cluster, PIM_Batch, APPR_THRESHOLD, d_threshold):
