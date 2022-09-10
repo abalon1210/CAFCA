@@ -28,10 +28,10 @@ from numpy import dot
 from numpy.linalg import norm
 # import torch
 
-target_scenario = 'OP_SUCCESS_RATE'  # INPUT: OP_SUCCESS_RATE or COLLISION
+target_scenario = 'COLLISION'  # INPUT: OP_SUCCESS_RATE or COLLISION
 LOG_PATH = 'C:/Users/Hyun/IdeaProjects/StarPlateS/SoS_Extension/logs_full'
 V_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA'
-IDEAL_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA/Ideal/OSR'
+IDEAL_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA/Ideal/Collision'
 
 print('In Log Folder : ', os.listdir(LOG_PATH))
 
@@ -1264,7 +1264,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
 
   print("============== Initial Patterns Selected ==============")
   prev_objs = -1 # Sum of Squared Errors for Fuzzy C-means clustering
-  f = open(join(V_PATH, "OSR_FCM_p_8_q_2_DPM_Eval.csv"), 'a')
+  f = open(join(V_PATH, "COLL_CAFCA_DPM_p_8_q_2.csv"), 'a')
   while iterations < MAX_ITERATION:
     print("============== Iterations: " + str(iterations))
     start_time = time.time()
@@ -1375,20 +1375,20 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
         pattern = None
         random.shuffle(clusters[j]) # To make variation for the generated patterns
         # Discriminative pattern mining
-        # candidate_patterns = []
-        # for i in range(0,len(clusters[j]),2):
-        #   if i+1 >= len(clusters[j]):
-        #     break
-        #   candidate_patterns.append(GetPattern(clusters[j][i], clusters[j][i+1], DELAY_THRESHOLD, MIN_LEN_THRESHOLD))
-        # if len(candidate_patterns) == 0:
-        #   patterns[j] = copy.deepcopy(clusters[j][0])
-        # else:
-        #   pattern, gr_value = DisCrimPattern(candidate_patterns, clusters[j], PIM_Batch, 0.8, DELAY_THRESHOLD) # APPEARANCE_THRESHOLD
-        #   patterns[j] = copy.deepcopy(pattern)
-        #   GR_values.append(gr_value)
-        for i in range(len(clusters[j])):
-          pattern = GetPattern(pattern, clusters[j][i], DELAY_THRESHOLD, MIN_LEN_THRESHOLD)
-        patterns[j] = copy.deepcopy(pattern)
+        candidate_patterns = []
+        for i in range(0,len(clusters[j]),2):
+          if i+1 >= len(clusters[j]):
+            break
+          candidate_patterns.append(GetPattern(clusters[j][i], clusters[j][i+1], DELAY_THRESHOLD, MIN_LEN_THRESHOLD))
+        if len(candidate_patterns) == 0:
+          patterns[j] = copy.deepcopy(clusters[j][i])
+        else:
+          pattern, gr_value = DisCrimPattern(candidate_patterns, clusters[j], PIM_Batch, 0.8, DELAY_THRESHOLD) # APPEARANCE_THRESHOLD
+          patterns[j] = copy.deepcopy(pattern)
+          GR_values.append(gr_value)
+        # for i in range(len(clusters[j])):
+        #   pattern = GetPattern(pattern, clusters[j][i], DELAY_THRESHOLD, MIN_LEN_THRESHOLD)
+        # patterns[j] = copy.deepcopy(pattern)
     print("============== Patterns Updated")
     # print(patterns)
 
@@ -2064,7 +2064,7 @@ def main():
   # RunSPADE(FIM)
   # RunLogLiner(FIM, classification_data)
   # RunFCM(FIM, classification_data[:-2], 1) # 0 : OSR, 1 : COLL
-  RunFCM(FIM, classification_data, 0, PIM) # 0 : OSR, 1 : COLL
+  RunFCM(FIM, classification_data, 1, PIM) # 0 : OSR, 1 : COLL
 
 if __name__ == "__main__":
   main()
