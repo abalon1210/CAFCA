@@ -806,10 +806,10 @@ def GetPatternDrone(im_pattern, im_input, env_sim_threshold, time_window_size): 
   ret = []  # returned pattern with the structure of im.
 
   avg_env_sims = []
-  for state_pattern in drone_pattern:  # state = a single collision information
-    for state_input in drone_input:
-      num_drone_pattern = (len(state_pattern) - 1)
-      num_drone_input = (len(state_input) - 1)
+  for state_pattern in range(drone_pattern): # state = a single collision information
+    for state_input in range(drone_input):
+      num_drone_pattern = (len(state_pattern)-1)/2
+      num_drone_input = (len(state_input)-1)/2
       env_sims = []
       if num_drone_pattern > num_drone_input:
         temp = range(num_drone_pattern)
