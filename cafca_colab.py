@@ -858,10 +858,10 @@ def GetPatternDroneSim(im_pattern, im_input, env_sim_threshold, time_window_size
   ret = []  # returned pattern with the structure of im.
 
   avg_env_sims = []
-  for state_pattern in drone_pattern:  # state = a single collision information
-    for state_input in drone_input:
-      num_drone_pattern = (len(state_pattern) - 1)
-      num_drone_input = (len(state_input) - 1)
+  for state_pattern in im_pattern[3]:  # state = a single collision information
+    for state_input in im_input[3]:
+      num_drone_pattern = len(state_pattern)
+      num_drone_input = len(state_input)
       env_sims = []
       if num_drone_pattern > num_drone_input:
         temp = range(num_drone_pattern)
@@ -2191,7 +2191,7 @@ def RunFCM(IM_, oracle, exp_type, PIM_): # exp_type : 0 -> OSR 1 -> COLL 2 -> Dr
   # f.close()
 
 def IMGeneratorDS():
-  IM = [] # A set of all interaction models ======> IM = [im0, im1, im2, im3, ...]
+  # IM = [] # A set of all interaction models ======> IM = [im0, im1, im2, im3, ...]
   FIM = [] # A set of failed interaction models
   PIM = [] # A set of passed interaction models
   curnt_id = -1
@@ -2235,6 +2235,7 @@ def IMGeneratorDS():
     count = 0
     state = []  # A single state (i.e. item) in a log file => [time, vel_x, vel_y, vel_z, distances]
     distances = []
+    coll_idxs = []
     for i in range(len(lines)):  # For each line in log file
       line = lines[i]
 
@@ -2267,6 +2268,7 @@ def IMGeneratorDS():
               temp[idx] = 10
             elif float(item) < 1.00:
               temp[idx] = 1
+              coll_idxs.append(len(env))
             elif float(item) < 5.00:
               temp[idx] = 2
             elif float(item) < 10.00:
@@ -2275,20 +2277,29 @@ def IMGeneratorDS():
               temp[idx] = 4
             else:
               temp[idx] = 5
-          distances.append(copy.deepcopy(np.array(temp)))
-    im.append(copy.deepcopy(env))
+          distances.append(np.array(temp[:]))
+    im.append(env[:])
 
     if len(im) == 4:
-      IM.append(copy.deepcopy(im))
-      if im[1] == "FALSE":
-        FIM.append(IM[-1])
+      # IM.append(im[:])
+      if im[1] == "FALSE": # 500: 5 seconds of time window size
+        temp_env = []
+        for coll_idx in coll_idxs:
+          temp = []
+          if coll_idx < 500:
+            start = 0
+          else:
+            start = coll_idx - 500
+          temp_env.extend(im[3][start:coll_idx+1])
+        im[3] = temp_env
+        FIM.append(im[:])
       else:
-        PIM.append(IM[-1])
+        PIM.append(im[:])
 
-  return IM, FIM, classification_data, PIM
+  return FIM, classification_data, PIM
 
 def main():
-  IM, FIM, classification_data, PIM = IMGeneratorDS()
+  FIM, classification_data, PIM = IMGeneratorDS()
   # IMtoTxt(IM,'InteractionModels.txt')
   # IMtoTxt(FIM, 'FailedInteractionModels.txt')
   # FIM = TxttoIM('FailedInteractionModels.txt')
