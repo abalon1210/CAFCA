@@ -29,7 +29,7 @@ from numpy.linalg import norm
 # import torch
 
 target_scenario = 'COLLISION'  # INPUT: OP_SUCCESS_RATE or COLLISION
-LOG_PATH = 'C:/Users/Hyun/IdeaProjects/StarPlateS/SoS_Extension/logs_full'
+LOG_PATH = 'C:/Users/Hyun/IdeaProjects/Droneswarming'
 V_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA'
 IDEAL_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA/Ideal/Collision'
 
@@ -844,50 +844,50 @@ def GetPatternDrone(im_pattern, im_input, env_sim_threshold, time_window_size): 
   else:
     return None
 
-  def GetPatternDroneSim(im_pattern, im_input, env_sim_threshold, time_window_size):  # LCS pattern extraction function
-    if im_pattern is None:
-      return im_input
+def GetPatternDroneSim(im_pattern, im_input, env_sim_threshold, time_window_size):
+  if im_pattern is None:
+    return im_input
 
-    # [[time1, id1, related_dist1, id2, related_dist2, ...], [time2, id3, related_dist3, id4, related_dist4, ...], ...]
-    drone_pattern = DroneCollisionChecker(im_pattern[3], time_window_size)
-    drone_input = DroneCollisionChecker(im_input[3], time_window_size)
-    ret = []  # returned pattern with the structure of im.
+  # [[time1, id1, related_dist1, id2, related_dist2, ...], [time2, id3, related_dist3, id4, related_dist4, ...], ...]
+  drone_pattern = DroneCollisionChecker(im_pattern[3], time_window_size)
+  drone_input = DroneCollisionChecker(im_input[3], time_window_size)
+  ret = []  # returned pattern with the structure of im.
 
-    avg_env_sims = []
-    for state_pattern in range(drone_pattern):  # state = a single collision information
-      for state_input in range(drone_input):
-        num_drone_pattern = (len(state_pattern) - 1) / 2
-        num_drone_input = (len(state_input) - 1) / 2
-        env_sims = []
-        if num_drone_pattern > num_drone_input:
-          temp = range(num_drone_pattern)
-          temp_comb = list(itertools.combinations(temp))  # list(itertools.permutations(temp))
-          # E.g., temp_comb = [(0,1), (0,2), (1,2)]
-          for comb in temp_comb:
-            env_sims_comb = []
-            for i in range(len(num_drone_input)):
-              env_sims_comb.append(EnvSimCalDrone(state_input(i), state_pattern(comb[i])))
-            env_sims.append(sum(env_sims_comb) / len(env_sims_comb))
-        else:
-          temp = range(num_drone_input)
-          temp_comb = list(itertools.combinations(temp))  # list(itertools.permutations(temp))
+  avg_env_sims = []
+  for state_pattern in range(drone_pattern):  # state = a single collision information
+    for state_input in range(drone_input):
+      num_drone_pattern = (len(state_pattern) - 1) / 2
+      num_drone_input = (len(state_input) - 1) / 2
+      env_sims = []
+      if num_drone_pattern > num_drone_input:
+        temp = range(num_drone_pattern)
+        temp_comb = list(itertools.combinations(temp))  # list(itertools.permutations(temp))
+        # E.g., temp_comb = [(0,1), (0,2), (1,2)]
+        for comb in temp_comb:
+          env_sims_comb = []
+          for i in range(len(num_drone_input)):
+            env_sims_comb.append(EnvSimCalDrone(state_input(i), state_pattern(comb[i])))
+          env_sims.append(sum(env_sims_comb) / len(env_sims_comb))
+      else:
+        temp = range(num_drone_input)
+        temp_comb = list(itertools.combinations(temp))  # list(itertools.permutations(temp))
 
-          for comb in temp_comb:
-            env_sims_comb = []
-            for i in range(len(num_drone_pattern)):
-              env_sims_comb.append(EnvSimCalDrone(state_pattern(i), state_input(comb[i])))
-            env_sims.append(sum(env_sims_comb) / len(env_sims_comb))
-        avg_env_sims.append(max(env_sims))  # Choose the max among the combination of drones in a collision
-    max_env_sim = max(avg_env_sims)  # Choose the max similarity value among the whole collision cases
-    max_time = drone_pattern[avg_env_sims.index(max_env_sim) / len(drone_input)][0]
+        for comb in temp_comb:
+          env_sims_comb = []
+          for i in range(len(num_drone_pattern)):
+            env_sims_comb.append(EnvSimCalDrone(state_pattern(i), state_input(comb[i])))
+          env_sims.append(sum(env_sims_comb) / len(env_sims_comb))
+      avg_env_sims.append(max(env_sims))  # Choose the max among the combination of drones in a collision
+  max_env_sim = max(avg_env_sims)  # Choose the max similarity value among the whole collision cases
+  max_time = drone_pattern[avg_env_sims.index(max_env_sim) / len(drone_input)][0]
 
-    env_pattern = EnvSlicer(im_pattern[3], max_time, time_window_size)
+  env_pattern = EnvSlicer(im_pattern[3], max_time, time_window_size)
 
-    ret.append(im_pattern[0])
-    ret.append(im_pattern[1])
-    ret.append(im_pattern[2])  # Anyway None in the drone scenario
-    ret.append(env_pattern)
-    return ret, max_env_sim
+  ret.append(im_pattern[0])
+  ret.append(im_pattern[1])
+  ret.append(im_pattern[2])  # Anyway None in the drone scenario
+  ret.append(env_pattern)
+  return ret, max_env_sim
 
 def EnvSimCalDrone(state_pattern, state_input):
   # state = [distance_drone0_time0, distance_drone0_time_1, ... ]
@@ -919,12 +919,12 @@ def DroneCollisionChecker(env, time_window_size):
   ids = []
   times = []
   for state in env:
-    for distance, idx in enumerate(state[4]):
+    for idx,  distance in enumerate(state[4]):
       if 1 in distance: # 1: Collision distance
         temp = []
         temp.append(idx)
-        temp.extend(distance.index(1))
-        ids.append(temp) # [id1,id2, id3], ... or [id1, id2]
+        temp.extend(np.where(distance == 1)) #distance.index(1)
+        ids.append(copy.deepcopy(temp)) # [id1,id2, id3], ... or [id1, id2]
         times.append(state[0])
 
   for i in range(len(ids)): # The number of collisions
@@ -934,7 +934,7 @@ def DroneCollisionChecker(env, time_window_size):
       temp.append(ids[i][j])
       temp_dist = []
       for state in env:
-        if state[0] < times[i] - time_window_size or state[0] > times:
+        if state[0] < times[i] - time_window_size or state[0] > times[i]:
           continue
         else:
           temp_dist.append(state[4][j])
@@ -1331,7 +1331,7 @@ import math
 def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE, ideal_patterns, oracle_batch, IM_Index, PIM_Batch): # TODO cl_type: FCM, PFS (Picture Fuzzy Set), KS2M
   INIT_SIM_THRESHOLD = 0.3
   MAX_INIT_SIM_THRESHOLD = 0.5
-  SENSITIVITY_THRESHOLD = 0.01
+  SENSITIVITY_THRESHOLD = 0.1
   MAX_ITERATION = 20
   m = 2 # Fuzzy value
 
@@ -1361,7 +1361,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
 
   print("============== Initial Patterns Selected ==============")
   prev_objs = -1 # Sum of Squared Errors for Fuzzy C-means clustering
-  f = open(join(V_PATH, "DRONE_FCM_DPM_p_8_q_2.csv"), 'a')
+  f = open(join(V_PATH, "DRONE_CAFCA_DPM_p_8_q_2.csv"), 'a')
   while iterations < MAX_ITERATION:
     print("============== Iterations: " + str(iterations))
     start_time = time.time()
@@ -2070,12 +2070,12 @@ def EvaluateF1P(oracle,index,cluster): #oracle: [[str]], index: [str], cluster: 
 
     return ret
 
-def RunFCM(IM_, oracle, exp_type, PIM_): # exp_type : 0 -> OSR 1 -> COLL
+def RunFCM(IM_, oracle, exp_type, PIM_): # exp_type : 0 -> OSR 1 -> COLL 2 -> Drone
   # IM Selection (Random)
   nIM_ = np.array(IM_)
   nPIM_ = np.array(PIM_)
   j = 1
-  for i in range(12):
+  for i in range(3):
     if exp_type == 0:
       np.random.shuffle(nIM_)
       IM_Batch = nIM_[0:100]
@@ -2123,18 +2123,22 @@ def RunFCM(IM_, oracle, exp_type, PIM_): # exp_type : 0 -> OSR 1 -> COLL
       np.random.shuffle(nIM_)
       IM_Batch = []
       IM_Index = []
-      oracle_batch = []
+      # oracle_batch = []
       for im in nIM_:
-        for cl in oracle:
-          #TODO id parsing check
-          if str(im[0]) + "_0" in cl:
-            IM_Batch.append(im)
-            IM_Index.append(im[0])
-            break
+      #   for cl in oracle:
+      #     #TODO id parsing check
+      #     if str(im[0]) + "_0" in cl:
+          IM_Batch.append(im)
+          IM_Index.append(im[0])
+      #       break
       IM_Batch = np.array(IM_Batch)
+      ideal_patterns = None
 
     np.random.shuffle(nPIM_)
-    PIM_Batch = nPIM_[0:100]
+    if exp_type == 0 or exp_type == 1:
+      PIM_Batch = nPIM_[0:100]
+    else:
+      PIM_Batch = nPIM_
     # Run FCM with hyperparam settings
     # for DELAY_THRESHOLD in range(1, 11):
     # start_time = time.time()
@@ -2147,7 +2151,7 @@ def RunFCM(IM_, oracle, exp_type, PIM_): # exp_type : 0 -> OSR 1 -> COLL
       patterns, clusters = FCM(1, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle, IM_Index, PIM_Batch)
     else: # COLL // 0: FCM, 1: CAFCA, 2:KS2M
       for k in range(1,6):
-        patterns, clusters = FCM(0, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), k, ideal_patterns, oracle, IM_Index, PIM_Batch)
+        patterns, clusters = FCM(1, IM_Batch, 0.05, (1/k) + (0.1*j), 4+(3*(i%3)), k, ideal_patterns, oracle, IM_Index, PIM_Batch)
     # end_time = time.time()
 
   # Evaluate the pattern mining & clustering results
@@ -2174,7 +2178,7 @@ def IMGeneratorDS():
   curnt_id = -1
 
   im = [] # an interaction model ======> im = [file_id, P/F, Interaction, Env]
-  for filename, idx in enumerate(os.listdir(LOG_PATH)):
+  for idx, filename in enumerate(os.listdir(LOG_PATH)):
     im.clear()
     if curnt_id != -1:  # Check the progress in console
       print("> Finished\n")
@@ -2184,15 +2188,16 @@ def IMGeneratorDS():
     im.append(curnt_id)
 
     ## TODO Classification_Results and data parsing
-    f = open(join(V_PATH, target_scenario + '_Classification_Results_Test.csv'),
-             encoding='UTF8')  # To get the classification results
-    c_results = f.readlines()
-    f.close()
-    classification_data = []
-    for line in c_results:
-      line = line.replace(",,", "")
-      line = line.replace("\n", "")
-      classification_data.append(line.split(','))
+    # f = open(join(V_PATH, target_scenario + '_Classification_Results_Test.csv'),
+    #          encoding='UTF8')  # To get the classification results
+    # c_results = f.readlines()
+    # f.close()
+    # classification_data = []
+    # for line in c_results:
+    #   line = line.replace(",,", "")
+    #   line = line.replace("\n", "")
+    #   classification_data.append(line.split(','))
+    classification_data = None
 
     # ======> P/F Tags
     if '32' in filename or '64' in filename:
@@ -2208,51 +2213,63 @@ def IMGeneratorDS():
     ret = ""
     f = open(join(LOG_PATH, filename), 'r')
     lines = f.readlines()
+    count = 0
+    state = []  # A single state (i.e. item) in a log file => [time, vel_x, vel_y, vel_z, distances]
+    distances = []
     for i in range(len(lines)):  # For each line in log file
       line = lines[i]
-      state = []  # A single state (i.e. item) in a log file => [time, vel_x, vel_y, vel_z, distances]
-      distances = []
+
       # vel_x, vel_y, vel_z => list
       # distances => matrix
-      if len(line) == 1:
-        if len(state) == 0:
-          state.append(line)
+      if "," not in line:
+        if len(state) == 0: # The first line of the file
+          state.append(float(line.replace('\n','')))
           count = 0
-        else:
-          state.append(distances)
+        else: # Other lines containing time
+          state.append(np.array(distances))
           env.append(copy.deepcopy(state))
           state.clear()
-          state.append(line)
+          distances.clear()
+          state.append(float(line.replace("\n","")))
           count = 0
-      if count < 3:
-        state.append(line)
-        count += 1
       else:
-        temp = line.split(",")
-        # Quantification
-        for item, idx in enumerate(temp):
-          if float(item) < 1.00:
-            temp[idx] = 1
-          elif float(item) < 5.00:
-            temp[idx] = 2
-          elif float(item) < 10.00:
-            temp[idx] = 3
-          elif float(item) < 15.00:
-            temp[idx] = 4
-          else:
-            temp[idx] = 5
-        distances.append(copy.deepcopy(temp))
+        if count < 3: # x,y,x velocities
+          temp = line.split(",")
+          for idx,item in enumerate(temp):
+            item.replace("\n", "")
+            temp[idx] = float(item)
+          state.append(copy.deepcopy(np.array(temp)))
+          count += 1
+        else:
+          temp = line.split(",")
+          # Quantification
+          for idx, item in enumerate(temp):
+            if float(item) == 0.0:
+              temp[idx] = 10
+            elif float(item) < 1.00:
+              temp[idx] = 1
+            elif float(item) < 5.00:
+              temp[idx] = 2
+            elif float(item) < 10.00:
+              temp[idx] = 3
+            elif float(item) < 15.00:
+              temp[idx] = 4
+            else:
+              temp[idx] = 5
+          distances.append(copy.deepcopy(np.array(temp)))
+    im.append(copy.deepcopy(env))
+
     if len(im) == 4:
       IM.append(copy.deepcopy(im))
       if im[1] == "FALSE":
-        FIM.append(copy.deepcopy(im))
+        FIM.append(IM[-1])
       else:
-        PIM.append(copy.deepcopy(im))
+        PIM.append(IM[-1])
 
-    return IM, FIM, classification_data, PIM
+  return IM, FIM, classification_data, PIM
 
 def main():
-  IM, FIM, classification_data, PIM = IMGenerator()
+  IM, FIM, classification_data, PIM = IMGeneratorDS()
   # IMtoTxt(IM,'InteractionModels.txt')
   # IMtoTxt(FIM, 'FailedInteractionModels.txt')
   # FIM = TxttoIM('FailedInteractionModels.txt')
@@ -2260,7 +2277,7 @@ def main():
   # RunSPADE(FIM)
   # RunLogLiner(FIM, classification_data)
   # RunFCM(FIM, classification_data[:-2], 1) # 0 : OSR, 1 : COLL
-  RunFCM(FIM, classification_data, 1, PIM) # 0 : OSR, 1 : COLL, 2: Drone Swarming
+  RunFCM(FIM, classification_data, 2, PIM) # 0 : OSR, 1 : COLL, 2: Drone Swarming
 
 if __name__ == "__main__":
   main()
