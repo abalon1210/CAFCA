@@ -805,9 +805,6 @@ def GetPatternDrone(im_pattern, im_input, env_sim_threshold, time_window_size): 
   drone_input = DroneCollisionChecker(im_input[3], time_window_size)
   ret = []  # returned pattern with the structure of im.
 
-  if len(drone_pattern) == 0 or len(drone_input) == 0:
-    return None
-
   avg_env_sims = []
   for state_pattern in drone_pattern:  # state = a single collision information
     for state_input in drone_input:
@@ -821,9 +818,8 @@ def GetPatternDrone(im_pattern, im_input, env_sim_threshold, time_window_size): 
         for comb in temp_comb:
           env_sims_comb = []
           for i in range(1, len(num_drone_input)):  # TODO What if the less number of collisions happened more than 3?
-            env_sims_comb.append(EnvSimCalDrone(
-              DroneEnvTimeSlicer(state_pattern[0], state_pattern(comb[i]), drone_pattern, time_window_size))
-                                 , DroneEnvTimeSlicer(state_input[0], state_input(i), drone_input, time_window_size))
+            env_sims_comb.append(EnvSimCalDrone(DroneEnvSlicer(state_pattern[0], state_pattern(comb[i]), drone_pattern, time_window_size))
+                                 , DroneEnvSlicer(state_input[0], state_input(i), drone_input, time_window_size))
           env_sims.append(sum(env_sims_comb) / len(env_sims_comb))
       else:
         temp = range(num_drone_input)
@@ -833,8 +829,8 @@ def GetPatternDrone(im_pattern, im_input, env_sim_threshold, time_window_size): 
           env_sims_comb = []
           for i in range(1, len(num_drone_pattern)):
             env_sims_comb.append(
-              EnvSimCalDrone(DroneEnvTimeSlicer(state_pattern[0], state_pattern(i), drone_pattern, time_window_size),
-                             DroneEnvTimeSlicer(state_input[0], state_input(comb[i]), drone_input, time_window_size)))
+              EnvSimCalDrone(DroneEnvSlicer(state_pattern[0], state_pattern(i), drone_pattern, time_window_size),
+                             DroneEnvSlicer(state_input[0], state_input(comb[i]), drone_input, time_window_size)))
           env_sims.append(sum(env_sims_comb) / len(env_sims_comb))
       avg_env_sims.append(max(env_sims))  # Choose the max among the combination of drones in a collision
   max_env_sim = max(avg_env_sims)  # Choose the max similarity value among the whole collision cases
@@ -860,9 +856,6 @@ def GetPatternDroneSim(im_pattern, im_input, env_sim_threshold, time_window_size
   drone_input = DroneCollisionChecker(im_input[3], time_window_size)
   # [[time1, id1, id2, ...], [time2, id3, id4, ...], ...]
   ret = []  # returned pattern with the structure of im.
-
-  if len(drone_pattern) == 0 or len(drone_input) == 0:
-    return None, None
 
   avg_env_sims = []
   for state_pattern in drone_pattern:  # state = a single collision information
