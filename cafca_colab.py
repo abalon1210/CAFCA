@@ -29,7 +29,7 @@ from numpy.linalg import norm
 # import torch
 
 target_scenario = 'COLLISION'  # INPUT: OP_SUCCESS_RATE or COLLISION
-LOG_PATH = 'C:/Users/Hyun/IdeaProjects/Droneswarming'
+LOG_PATH = 'C:/Users/Hyun/IdeaProjects/Droneswarming/sample'
 V_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA'
 IDEAL_PATH = 'C:/Users/Hyun/IdeaProjects/CAFCA/Ideal/Collision'
 
@@ -803,47 +803,20 @@ def GetPatternDrone(im_pattern, im_input, env_sim_threshold, time_window_size): 
   # [[time1, id1, related_dist1, id2, related_dist2, ...], [time2, id3, related_dist3, id4, related_dist4, ...], ...]
   drone_pattern = DroneCollisionChecker(im_pattern[3], time_window_size)
   drone_input = DroneCollisionChecker(im_input[3], time_window_size)
-  ret = []  # returned pattern with the structure of im.
+  # [[time1, id1, id2, ...], [time2, id3, id4, ...], ...]
 
   avg_env_sims = []
-  for state_pattern in range(drone_pattern): # state = a single collision information
-    for state_input in range(drone_input):
-      num_drone_pattern = (len(state_pattern)-1)/2
-      num_drone_input = (len(state_input)-1)/2
-      env_sims = []
-      if num_drone_pattern > num_drone_input:
-        temp = range(num_drone_pattern)
-        temp_comb = list(itertools.combinations(temp))  # list(itertools.permutations(temp))
-        # E.g., temp_comb = [(0,1), (0,2), (1,2)]
-        for comb in temp_comb:
-          env_sims_comb = []
-          for i in range(1, len(num_drone_input)):  # TODO What if the less number of collisions happened more than 3?
-            env_sims_comb.append(EnvSimCalDrone(DroneEnvSlicer(state_pattern[0], state_pattern(comb[i]), drone_pattern, time_window_size))
-                                 , DroneEnvSlicer(state_input[0], state_input(i), drone_input, time_window_size))
-          env_sims.append(sum(env_sims_comb) / len(env_sims_comb))
-      else:
-        temp = range(num_drone_input)
-        temp_comb = list(itertools.combinations(temp))  # list(itertools.permutations(temp))
+  for coll_pattern in drone_pattern:  # state = a single collision information
+    for coll_input in drone_input:
+      for k in range(2):  # Assume that there exist no collision among more than three drones so far -> % 3
+        env_sims_comb = []
+        env_sims_comb.append(EnvSimCalDrone(coll_pattern[0], coll_input[k % 2]))
+        env_sims_comb.append(EnvSimCalDrone(coll_pattern[1], coll_input[(k + 1) % 2]))
+        avg_env_sims.append(sum(env_sims_comb) / len(env_sims_comb))
 
-        for comb in temp_comb:
-          env_sims_comb = []
-          for i in range(1, len(num_drone_pattern)):
-            env_sims_comb.append(
-              EnvSimCalDrone(DroneEnvSlicer(state_pattern[0], state_pattern(i), drone_pattern, time_window_size),
-                             DroneEnvSlicer(state_input[0], state_input(comb[i]), drone_input, time_window_size)))
-          env_sims.append(sum(env_sims_comb) / len(env_sims_comb))
-      avg_env_sims.append(max(env_sims))  # Choose the max among the combination of drones in a collision
   max_env_sim = max(avg_env_sims)  # Choose the max similarity value among the whole collision cases
-  max_time = drone_pattern[avg_env_sims.index(max_env_sim) / len(drone_input)][0]
-
-  env_pattern = EnvSlicer(im_pattern[3], max_time, time_window_size)
-
-  if max_env_sim >= env_sim_threshold:
-    ret.append(im_pattern[0])
-    ret.append(im_pattern[1])
-    ret.append(im_pattern[2]) # Anyway None in the drone scenario
-    ret.append(env_pattern)
-    return ret
+  if max_env_sim > env_sim_threshold:
+    return im_pattern
   else:
     return None
 
@@ -855,45 +828,19 @@ def GetPatternDroneSim(im_pattern, im_input, env_sim_threshold, time_window_size
   drone_pattern = DroneCollisionChecker(im_pattern[3], time_window_size)
   drone_input = DroneCollisionChecker(im_input[3], time_window_size)
   # [[time1, id1, id2, ...], [time2, id3, id4, ...], ...]
-  ret = []  # returned pattern with the structure of im.
 
   avg_env_sims = []
-  for state_pattern in im_pattern[3]:  # state = a single collision information
-    for state_input in im_input[3]:
-      num_drone_pattern = len(state_pattern)
-      num_drone_input = len(state_input)
-      env_sims = []
-      if num_drone_pattern > num_drone_input:
-        temp = range(num_drone_pattern)
-        temp_comb = list(itertools.combinations(temp))  # list(itertools.permutations(temp))
-        # E.g., temp_comb = [(0,1), (0,2), (1,2)]
-        for comb in temp_comb:
-          env_sims_comb = []
-          for i in range(1, len(num_drone_input)): # TODO What if the less number of collisions happened more than 3?
-            env_sims_comb.append(EnvSimCalDrone(DroneEnvSlicer(state_pattern[0], state_pattern(comb[i]), drone_pattern, time_window_size))
-                                                ,DroneEnvSlicer(state_input[0],state_input(i),drone_input,time_window_size))
-          env_sims.append(sum(env_sims_comb) / len(env_sims_comb))
-      else:
-        temp = range(num_drone_input)
-        temp_comb = list(itertools.combinations(temp))  # list(itertools.permutations(temp))
+  for coll_pattern in drone_pattern:  # state = a single collision information
+    for coll_input in drone_input:
+      for k in range(2): # Assume that there exist no collision among more than three drones so far -> % 3
+        env_sims_comb = []
+        env_sims_comb.append(EnvSimCalDrone(coll_pattern[0], coll_input[k%2]))
+        env_sims_comb.append(EnvSimCalDrone(coll_pattern[1], coll_input[(k+1)%2]))
+        avg_env_sims.append(sum(env_sims_comb) / len(env_sims_comb))
 
-        for comb in temp_comb:
-          env_sims_comb = []
-          for i in range(1,len(num_drone_pattern)):
-            env_sims_comb.append(EnvSimCalDrone(DroneEnvSlicer(state_pattern[0], state_pattern(i), drone_pattern, time_window_size),
-                                                DroneEnvSlicer(state_input[0],state_input(comb[i]),drone_input,time_window_size)))
-          env_sims.append(sum(env_sims_comb) / len(env_sims_comb))
-      avg_env_sims.append(max(env_sims))  # Choose the max among the combination of drones in a collision
   max_env_sim = max(avg_env_sims)  # Choose the max similarity value among the whole collision cases
-  max_time = drone_pattern[avg_env_sims.index(max_env_sim) / len(drone_input)][0]
 
-  env_pattern = EnvSlicer(im_pattern[3], max_time, time_window_size)
-
-  ret.append(im_pattern[0])
-  ret.append(im_pattern[1])
-  ret.append(im_pattern[2])  # Anyway None in the drone scenario
-  ret.append(env_pattern)
-  return ret, max_env_sim
+  return im_pattern, max_env_sim
 
 def DroneEnvSlicer(time, collision_id, env, time_window_size):
   ret = []
@@ -908,13 +855,14 @@ def EnvSimCalDrone(state_pattern, state_input):
   # state = [distance_drone0_time0, distance_drone0_time_1, ... ]
   # distance_drone0_time0 = [drone0_drone0, drone0_drone1, drone0_drone2, ... ]
   ret_sims = []
-  for item_pattern in state_pattern:
-    for item_input in state_input:
-      # Item sorting
-      temp_pattern = item_pattern.sort()
-      temp_input = item_input.sort()
-      # Vector similarity calculation
-      ret_sims.append(cos_sim(temp_pattern, temp_input))
+  temp_state_p = copy.deepcopy(state_pattern)
+  temp_state_i = copy.deepcopy(state_input)
+  for item_pattern, item_input in zip(temp_state_p, temp_state_i):
+    # Item sorting
+    item_pattern.sort()
+    item_input.sort()
+    # Vector similarity calculation
+    ret_sims.append(cos_sim(item_pattern, item_input))
 
   return sum(ret_sims) / len(ret_sims)
 
@@ -933,33 +881,48 @@ def DroneCollisionChecker(env, time_window_size):
   # A single state (i.e. item) in a log file => [time, vel_x, vel_y, vel_z, distances]
   ids = []
   times = []
+  coll_ids = []
   for state in env:
-    for idx,  distance in enumerate(state[4]):
-      if 1 in distance: # 1: Collision distance
-        temp = []
-        temp.append(state[0])
-        temp.append(idx)
-        temp.extend(np.where(distance == 1)) #distance.index(1)
-        # ids.append(temp[:]) # [id1,id2, id3], ... or [id1, id2]
-        # times.append(state[0])
-        ret.append(temp)
-
-  # for i in range(len(ids)): # The number of collisions
-  #   ret.append(times[i])
-
-    # temp = []
-    # temp.append(times[i])
-    # for j in range(len(ids[i])): # The number of collided drones
-    #   temp.append(ids[i][j])
-    #   temp_dist = []
-    #   for state in env:
-    #     if state[0] < times[i] - time_window_size or state[0] > times[i]:
-    #       continue
-    #     else:
-    #       temp_dist.append(state[4][j])
-    #   temp.append(temp_dist[:])
-    # ret.append(temp[:])
-    # [[time1, id1, related_dist1, id2, related_dist2, ...], [time2, id3, related_dist3, id4, related_dist4, ...], ...]
+    for idx, distance in enumerate(state[4]):
+      temp_coll = set()
+      np_coll = np.where(distance == 1)[0].tolist()
+      if len(np_coll) != 0:
+        for item in np_coll:
+          temp_coll.add(item)
+        temp_coll.add(idx)
+        if temp_coll not in coll_ids:
+          coll_ids.append(copy.deepcopy(temp_coll))
+      # for idx_col, val in enumerate(distance):
+      #   if val == 1:
+      #     assign_flag = 1
+      #     if len(coll_ids) == 0:
+      #       temp = [idx, idx_col]
+      #       coll_ids.append(temp[:])
+      #     else:
+      #       for coll_id, coll in enumerate(coll_ids):
+      #         if idx in coll and idx_col in coll:
+      #           assign_flag = 0
+      #           break
+      #         elif idx in coll and idx_col not in coll:
+      #           coll_ids[coll_id].append(idx_col)
+      #           assign_flag = 0
+      #           break
+      #         elif idx not in coll and idx_col in coll:
+      #           coll_ids[coll_id].append(idx)
+      #           assign_flag = 0
+      #           break
+      #       if assign_flag:
+      #         temp = [idx, idx_col]
+      #         coll_ids.append(temp[:])
+  # coll_ids = [ [ 29, 42 ], [ 32, 30, 16] , ... ]
+  for coll in coll_ids:
+    temp_coll = []
+    for coll_id in coll:
+      temp = []
+      for state in env:
+        temp.append(state[4][coll_id])
+      temp_coll.append(temp[:])
+    ret.append(temp_coll[:])
   return ret
 
 """### SPADE Pattern Mining
@@ -2195,10 +2158,10 @@ def IMGeneratorDS():
   FIM = [] # A set of failed interaction models
   PIM = [] # A set of passed interaction models
   curnt_id = -1
+  global_id = 0
 
   im = [] # an interaction model ======> im = [file_id, P/F, Interaction, Env]
   for idx, filename in enumerate(os.listdir(LOG_PATH)):
-    im.clear()
     if curnt_id != -1:  # Check the progress in console
       print("> Finished\n")
     print("===========" + filename + ": Start =======")
@@ -2236,6 +2199,8 @@ def IMGeneratorDS():
     state = []  # A single state (i.e. item) in a log file => [time, vel_x, vel_y, vel_z, distances]
     distances = []
     coll_idxs = []
+    prev_coll_id = -1
+    curnt_coll_id = -1
     for i in range(len(lines)):  # For each line in log file
       line = lines[i]
 
@@ -2268,7 +2233,17 @@ def IMGeneratorDS():
               temp[idx] = 10
             elif float(item) < 1.00:
               temp[idx] = 1
-              coll_idxs.append(len(env))
+              curnt_coll_id = len(env)
+              if i == len(lines)-1: # End condition
+                coll_idxs.append(curnt_coll_id)
+                break
+              else:
+                if prev_coll_id == -1: # Start condition
+                  coll_idxs.append(curnt_coll_id)
+                elif curnt_coll_id - prev_coll_id > 1: # Other cases
+                  coll_idxs.append(prev_coll_id)
+                  coll_idxs.append(curnt_coll_id)
+              prev_coll_id = curnt_coll_id
             elif float(item) < 5.00:
               temp[idx] = 2
             elif float(item) < 10.00:
@@ -2282,19 +2257,26 @@ def IMGeneratorDS():
 
     if len(im) == 4:
       # IM.append(im[:])
-      if im[1] == "FALSE": # 500: 5 seconds of time window size
-        temp_env = []
-        for coll_idx in coll_idxs:
-          temp = []
-          if coll_idx < 500:
-            start = 0
-          else:
-            start = coll_idx - 500
-          temp_env.extend(im[3][start:coll_idx+1])
-        im[3] = temp_env
-        FIM.append(im[:])
+      if im[1] == "FALSE": # 200: 2 seconds of time window size
+        len_collisions = int(len(coll_idxs) / 2)
+        for c in range(len_collisions):
+          temp_im = []
+          temp_im.append(global_id)
+          global_id += 1
+          temp_im.append(im[1])
+          temp_im.append(im[2])
+          env = im[3]
+          coll_start = coll_idxs[c*2]
+          coll_end = coll_idxs[c*2+1]
+          if coll_start >= 200:
+            coll_start = coll_start - 200
+          temp_im.append(env[coll_start:coll_end])
+          FIM.append(temp_im[:])
       else:
         PIM.append(im[:])
+    temp_im.clear()
+    im.clear()
+    lines.clear()
 
   return FIM, classification_data, PIM
 
