@@ -397,11 +397,11 @@ def CAFCASimCal(im_pattern, im_input, d_threshold):
   p = 0.8
   q = 0.2
   # generated_pattern, avg_env_sim = GetPatternSim(im_pattern, im_input, d_threshold)
-  generated_pattern, avg_env_sim = GetPatternDroneSim(im_pattern, im_input, 0.8, 5.0)
+  generated_pattern, avg_env_sim = GetPatternDroneSim(im_pattern, im_input, 0.8, 2.0)
   # generated_pattern, avg_env_sim = GetPatternSimWithoutEnv(im_pattern, im_input, d_threshold)
   # return p * (len(generated_pattern[2]) / (len(im_pattern[2]) * len(im_input[2]))) + q * avg_env_sim
-  if generated_pattern[2] is None:
-    return 0
+  # if generated_pattern[2] is None:
+  #   return 0
   return avg_env_sim
   # return p * (len(generated_pattern[2]) / len(im_pattern[2])) + q * avg_env_sim
 
@@ -801,13 +801,13 @@ def GetPatternDrone(im_pattern, im_input, env_sim_threshold, time_window_size): 
     return im_input
 
   # [[time1, id1, related_dist1, id2, related_dist2, ...], [time2, id3, related_dist3, id4, related_dist4, ...], ...]
-  drone_pattern = DroneCollisionChecker(im_pattern[3], time_window_size)
-  drone_input = DroneCollisionChecker(im_input[3], time_window_size)
-  # [[time1, id1, id2, ...], [time2, id3, id4, ...], ...]
+  drone_pattern = DroneCollisionChecker(im_pattern, time_window_size)
+  drone_input = DroneCollisionChecker(im_input, time_window_size)
+  # [im_id, [drone_1:[time1, vel_x, vel_y, vel_z, dist], [time2,...]],drone2:[time1, vel_x, vel_y, vel_z, dist], [time2, ...]...]], [drone_19:[time]...
 
   avg_env_sims = []
-  for coll_pattern in drone_pattern:  # state = a single collision information
-    for coll_input in drone_input:
+  for coll_pattern in drone_pattern[1:]:
+    for coll_input in drone_input[1:]:
       for k in range(2):  # Assume that there exist no collision among more than three drones so far -> % 3
         env_sims_comb = []
         env_sims_comb.append(EnvSimCalDrone(coll_pattern[0], coll_input[k % 2]))
@@ -816,7 +816,10 @@ def GetPatternDrone(im_pattern, im_input, env_sim_threshold, time_window_size): 
 
   max_env_sim = max(avg_env_sims)  # Choose the max similarity value among the whole collision cases
   if max_env_sim > env_sim_threshold:
-    return im_pattern
+    if len(im_pattern[3]) > len(im_input[3]):
+      return im_input
+    else:
+      return im_pattern
   else:
     return None
 
@@ -825,13 +828,13 @@ def GetPatternDroneSim(im_pattern, im_input, env_sim_threshold, time_window_size
     return im_input
 
   # [[time1, id1, related_dist1, id2, related_dist2, ...], [time2, id3, related_dist3, id4, related_dist4, ...], ...]
-  drone_pattern = DroneCollisionChecker(im_pattern[3], time_window_size)
-  drone_input = DroneCollisionChecker(im_input[3], time_window_size)
+  drone_pattern = DroneCollisionChecker(im_pattern, time_window_size)
+  drone_input = DroneCollisionChecker(im_input, time_window_size)
   # [[time1, id1, id2, ...], [time2, id3, id4, ...], ...]
-
+  print(str(im_pattern[0]) + " " + str(im_input[0]))
   avg_env_sims = []
-  for coll_pattern in drone_pattern:  # state = a single collision information
-    for coll_input in drone_input:
+  for coll_pattern in drone_pattern[1:]:  # state = a single collision information
+    for coll_input in drone_input[1:]:
       for k in range(2): # Assume that there exist no collision among more than three drones so far -> % 3
         env_sims_comb = []
         env_sims_comb.append(EnvSimCalDrone(coll_pattern[0], coll_input[k%2]))
@@ -855,15 +858,18 @@ def EnvSimCalDrone(state_pattern, state_input):
   # state = [distance_drone0_time0, distance_drone0_time_1, ... ]
   # distance_drone0_time0 = [drone0_drone0, drone0_drone1, drone0_drone2, ... ]
   ret_sims = []
-  temp_state_p = copy.deepcopy(state_pattern)
-  temp_state_i = copy.deepcopy(state_input)
-  for item_pattern, item_input in zip(temp_state_p, temp_state_i):
+  for item_pattern, item_input in zip(state_pattern, state_input):
     # Item sorting
-    item_pattern.sort()
-    item_input.sort()
+    dist_pattern = item_pattern[4:]
+    dist_pattern.sort()
+    cal_pattern = item_pattern[1:4] + dist_pattern[:10]
+    dist_input = item_input[4:]
+    dist_input.sort()
+    cal_input = item_input[1:4] + dist_input[:10]
     # Vector similarity calculation
-    ret_sims.append(cos_sim(item_pattern, item_input))
+    ret_sims.append(cos_sim(cal_pattern, cal_input))
 
+  # print(ret_sims)
   return sum(ret_sims) / len(ret_sims)
 
 def EnvSlicer(env, time, time_window_size):
@@ -876,12 +882,14 @@ def EnvSlicer(env, time, time_window_size):
       ret.append(state[4])
   return ret
 
-def DroneCollisionChecker(env, time_window_size):
+def DroneCollisionChecker(im, time_window_size):
   ret = []
   # A single state (i.e. item) in a log file => [time, vel_x, vel_y, vel_z, distances]
   ids = []
   times = []
   coll_ids = []
+  env = im[3]
+
   for state in env:
     for idx, distance in enumerate(state[4]):
       temp_coll = set()
@@ -915,12 +923,22 @@ def DroneCollisionChecker(env, time_window_size):
       #         temp = [idx, idx_col]
       #         coll_ids.append(temp[:])
   # coll_ids = [ [ 29, 42 ], [ 32, 30, 16] , ... ]
+  temp = []
+  temp.append(str(im[0]))
+  temp.extend(coll_ids)
+  ret.append(temp[:])
   for coll in coll_ids:
     temp_coll = []
     for coll_id in coll:
       temp = []
       for state in env:
-        temp.append(state[4][coll_id])
+        temp_state = []
+        temp_state.append(state[0])
+        temp_state.append(state[1][coll_id])
+        temp_state.append(state[2][coll_id])
+        temp_state.append(state[3][coll_id])
+        temp_state.extend(state[4][coll_id])
+        temp.append(temp_state[:])
       temp_coll.append(temp[:])
     ret.append(temp_coll[:])
   return ret
@@ -1343,7 +1361,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
 
   print("============== Initial Patterns Selected ==============")
   prev_objs = -1 # Sum of Squared Errors for Fuzzy C-means clustering
-  f = open(join(V_PATH, "DRONE_CAFCA_DPM_p_8_q_2.csv"), 'a')
+  f = open(join(V_PATH, "DRONE_CAFCA_DPM_p_8_q_2_v2.csv"), 'a')
   while iterations < MAX_ITERATION:
     print("============== Iterations: " + str(iterations))
     start_time = time.time()
@@ -1529,12 +1547,12 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
     #   if not val is None:
     #     pitw_sum += val
 
-    gr_result = ""
-    if len(GR_values) == 0:
-      GR_values = DisCrimPatternEval(patterns, PIM_Batch, 0.8, DELAY_THRESHOLD)
-    for value in GR_values:
-      gr_result += str(value) + ","
-    gr_result = gr_result[:-1]
+    # gr_result = ""
+    # if len(GR_values) == 0:
+    #   GR_values = DisCrimPatternEval(patterns, PIM_Batch, 0.8, DELAY_THRESHOLD)
+    # for value in GR_values:
+    #   gr_result += str(value) + ","
+    # gr_result = gr_result[:-1]
     # print("d_threshold:" + str(DELAY_THRESHOLD) + ", " + "sim_threshold:" + str(SIM_THRESHOLD) + ", " + "iterations:" + str(iterations) + ", objs:" + str(objs) + "==> PIT:" + str(pit_sum) + ", PITW:" + str(pitw_sum) + ", F1P:" + str(f1p[-1]) + ", GR_Value:" + gr_result + ", Time:" + str((end_time - start_time)))
 
     ret = ""
@@ -1566,10 +1584,31 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
           simvalues_item[k][l] = CAFCASimCal(IM_[k], IM_[l], DELAY_THRESHOLD)
 
   silhouette = Silhouette(simvalues_item, IM_, clusters)
+  f.write("Silhouette value\n")
   f.write(str(silhouette) + "\n")
+  f.write("Patterns\n")
   f.close()
-  print(patterns)
-  print(clusters)
+
+  import csv
+  for i in range(len(patterns)):
+    with open("DRONE_CAFCA_DPM_p_8_q_2_" + str(C_VALUE) + "_pattern_" + str(i) + ".csv", "a", newline="") as f:
+      write = csv.writer(f)
+      if (patterns[i] != None).all():
+        temp = DroneCollisionChecker(patterns[i], 2.0)
+        for j in range(len(temp)):
+          if j == 0:
+            write.writerow(temp[j])
+          else:
+            for drones in temp[j]:
+              for row in drones:
+                write.writerow(row)
+              empty = []
+              write.writerow(empty)
+      else:
+        write.writerow(["None"])
+    # write.writerows(patterns)
+  # print(patterns)
+  # print(clusters)
   return patterns, clusters
 
 def DisCrimPatternEval(patterns, cluster, PIM_Batch, APPR_THRESHOLD, d_threshold):
@@ -1635,7 +1674,10 @@ def Silhouette(simvalues_item, IM_, clusters):
         a_i = temp / len(clusters[j])
       else:
         b_list.append(temp / len(clusters[j]))
-    b_i = min(b_list)
+    if len(b_list) == 0:
+      b_i = 0
+    else:
+      b_i = min(b_list)
     sp.append((b_i - a_i) / max(a_i, b_i))
   return float(sum(sp)) / float(len(sp))
 
@@ -2132,7 +2174,7 @@ def RunFCM(IM_, oracle, exp_type, PIM_): # exp_type : 0 -> OSR 1 -> COLL 2 -> Dr
     elif exp_type == 1: # COLL // 0: FCM, 1: CAFCA, 2:KS2M
       patterns, clusters = FCM(1, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle, IM_Index, PIM_Batch)
     else: # COLL // 0: FCM, 1: CAFCA, 2:KS2M
-      for k in range(1,6):
+      for k in range(2,6):
         patterns, clusters = FCM(1, IM_Batch, 0.05, (1/k) + (0.1*j), 4+(3*(i%3)), k, ideal_patterns, oracle, IM_Index, PIM_Batch)
     # end_time = time.time()
 
@@ -2218,7 +2260,7 @@ def IMGeneratorDS():
           state.append(float(line.replace("\n","")))
           count = 0
       else:
-        if count < 3: # x,y,x velocities
+        if count < 3: # x,y,z velocities
           temp = line.split(",")
           for idx,item in enumerate(temp):
             item.replace("\n", "")
