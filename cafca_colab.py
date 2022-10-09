@@ -29,7 +29,7 @@ from numpy.linalg import norm
 # import torch
 
 target_scenario = 'OP_SUCCESS_RATE'  # INPUT: OP_SUCCESS_RATE or COLLISION
-LOG_PATH = 'C:/Users/Administrator/IdeaProjects/StarPlateS/SoS_Extension/logs_full'
+LOG_PATH = 'C:/Users/Administrator/IdeaProjects/StarPlateS/SoS_Extension/logs_full/MCI Sample'
 V_PATH = 'C:/Users/Administrator/IdeaProjects/CAFCA'
 IDEAL_PATH = 'C:/Users/Administrator/IdeaProjects/CAFCA/Ideal/OSR'
 
@@ -210,6 +210,129 @@ def IMGenerator():
       FIM.append(copy.deepcopy(im))
     else:
       PIM.append(copy.deepcopy(im))
+  return IM, FIM, classification_data, PIM
+
+import openpyxl
+
+def IMGeneratorMCI():
+  IM = [] # A set of all interaction models ======> IM = [im0, im1, im2, im3, ...]
+  FIM = [] # A set of failed interaction models
+  PIM = [] # A set of passed interaction models
+
+  classification_data = []
+  msg_index_list = [1,4,7,10,13,16,19]
+  folders = os.listdir(LOG_PATH)
+  file_id = 0
+  for folder in folders:
+    p_f_flag = True
+    if 'coll' in folder:
+      p_f_flag = False
+    folder_path = join(LOG_PATH,folder)
+    temp_class = []
+    for filename in os.listdir(folder_path):
+      if '~' in filename or '$' in filename:
+        continue
+      im = []
+      excel_sheet = openpyxl.load_workbook(join(folder_path, filename))['communications']
+
+      # ID
+      im.append(file_id)
+      # Classifier
+      temp_class.append(str(file_id))
+      file_id += 1
+      # P/F Tag
+      im.append(p_f_flag)
+      # Interaction log
+      interaction = []
+      for idx,row in enumerate(excel_sheet.iter_rows()):
+        if idx < 2:
+          continue
+        time = row[0].value
+        for msg_index in msg_index_list: # For each message items => [time, command_sent, sender, sender_role, receiver, receiver_role]
+          if msg_index == 1: # FF -> FF Broadcast
+            msg = []
+            msg.append(time)
+            msg.append("MemorySharing")
+            msg.append("FF")
+            msg.append("FF")
+            msg.append("FF-Broadcast")
+            msg.append("FF-Broadcast")
+            # for i in range(int(row[msg_index].value)):
+            #   interaction.append(msg)
+
+          elif msg_index == 4: # FF -> Org
+            msg = []
+            msg.append(time)
+            msg.append("Nearest Hospital")
+            msg.append("FF")
+            msg.append("FF")
+            msg.append("Org")
+            msg.append("Org")
+            for i in range(int(row[msg_index].value)):
+              interaction.append(msg)
+          elif msg_index == 7: # Org -> FF
+            msg = []
+            msg.append(time)
+            msg.append("Nearest Hospital Info")
+            msg.append("Org")
+            msg.append("Org")
+            msg.append("FF")
+            msg.append("FF")
+            for i in range(int(row[msg_index].value)):
+              interaction.append(msg)
+          elif msg_index == 10: # Amb -> Org
+            msg = []
+            msg.append(time)
+            msg.append("Free State Start")
+            msg.append("Amb")
+            msg.append("Amb")
+            msg.append("Org")
+            msg.append("Org")
+            for i in range(int(row[msg_index].value)):
+              interaction.append(msg)
+          elif msg_index == 13: # Org -> Amb
+            msg = []
+            msg.append(time)
+            msg.append("Move to Bridgehead")
+            msg.append("Org")
+            msg.append("Org")
+            msg.append("Amb")
+            msg.append("Amb")
+            for i in range(int(row[msg_index].value)):
+              interaction.append(msg)
+          elif msg_index == 16: # Brg -> Org
+            msg = []
+            msg.append(time)
+            msg.append("Patient Arrived")
+            msg.append("Brg")
+            msg.append("Brg")
+            msg.append("Org")
+            msg.append("Org")
+            for i in range(int(row[msg_index].value)):
+              interaction.append(msg)
+          elif msg_index == 19: # Org -> Brg:
+            msg = []
+            msg.append(time)
+            msg.append("Not Defined")
+            msg.append("Org")
+            msg.append("Org")
+            msg.append("Brg")
+            msg.append("Brg")
+            for i in range(int(row[msg_index].value)):
+              interaction.append(msg)
+      im.append(interaction)
+
+      # Environment log
+      im.append(None)
+
+      IM.append(copy.deepcopy(im))
+      if not p_f_flag:
+        FIM.append(IM[-1])
+      else:
+        PIM.append(IM[-1])
+
+    classification_data.append(copy.deepcopy(temp_class))
+
   return IM, FIM, classification_data, PIM
 
 """## Interaction model txt Writer
@@ -394,8 +517,8 @@ def Quantification(distance): # 5: Very far / 4: Far / 3: Appropriate / 2: Close
 # Inputs: two models (pattern and input), d_threshold
 # Outputs: The most critical LCS among possible LCS generation sets, the LCS similarity value with the pattern and input models.
 def CAFCASimCal(im_pattern, im_input, d_threshold):
-  p = 0.8
-  q = 0.2
+  p = 0.1
+  q = 0.9
   generated_pattern, avg_env_sim = GetPatternSim(im_pattern, im_input, d_threshold)
   # generated_pattern, avg_env_sim = GetPatternSimWithoutEnv(im_pattern, im_input, d_threshold)
   # return p * (len(generated_pattern[2]) / (len(im_pattern[2]) * len(im_input[2]))) + q * avg_env_sim
@@ -904,6 +1027,7 @@ def Frequent2ElementSequenceExtractor(freqEleList, sup_threshold): # extract all
 def EnumerateFrequentSequence(freqEleList, freqSeqEle, sup_threshold): # find the remaining sequence atoms (3-sequences, 4-sequences, ...)
   # temporal join each two sequence atoms to construct new sequence atoms
   newSeqEleIdList = {}
+  print(len(freqEleList.keys()))
   for index_a, seq_a in enumerate(freqEleList.keys()):
     for index_b, seq_b in enumerate(list(freqEleList.keys())[index_a+1:]):
       joinedIdList = TemporalJoin([list(seq_a), freqEleList[seq_a]], [list(seq_b), freqEleList[seq_b]])
@@ -911,6 +1035,7 @@ def EnumerateFrequentSequence(freqEleList, freqSeqEle, sup_threshold): # find th
         if seq not in newSeqEleIdList:
           newSeqEleIdList[seq] = set()
         newSeqEleIdList[seq].update(idlist)
+    print(index_a)
   newSeqEleIdList = FrequentElementExtractor(newSeqEleIdList, sup_threshold)
 
   # store new frequent sequences in freqSeqEle
@@ -970,8 +1095,9 @@ def SPADESettoString(item_set):
   return ret[:-1]
 
 def RunSPADE(IM):
-  s_threshold = len(IM)*0.75
-  for i in range(21, 31):
+  #s_threshold = len(IM)*0.53
+  s_threshold = 53
+  for i in range(30):
     random.seed(i)
     random.shuffle(IM)
     print(IM[0])
@@ -979,7 +1105,7 @@ def RunSPADE(IM):
     print(frequentSequenceSet)
     print(len(frequentSequenceSet))
 
-    f = open(join(V_PATH, 'SPADE_11_0.78.txt'), 'w')
+    f = open(join(V_PATH, 'SPADE_'+ str(i) + '_0_53.txt'), 'w')
     for item in frequentSequenceSet:
       f.write(SPADEListtoString(item[0]) + '\n' + SPADESettoString(list(item[2])) + '\n')
     f.close()
@@ -1181,7 +1307,7 @@ import math
 def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE, ideal_patterns, oracle_batch, IM_Index, PIM_Batch): # TODO cl_type: FCM, PFS (Picture Fuzzy Set), KS2M
   INIT_SIM_THRESHOLD = 0.3
   MAX_INIT_SIM_THRESHOLD = 0.5
-  SENSITIVITY_THRESHOLD = 0.005
+  SENSITIVITY_THRESHOLD = 0.01
   MAX_ITERATION = 20
   m = 2 # Fuzzy value
 
@@ -1264,7 +1390,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
 
   print("============== Initial Patterns Selected ==============")
   prev_objs = -1 # Sum of Squared Errors for Fuzzy C-means clustering
-  f = open(join(V_PATH, "OSR_FCM_DPM_p_8_q_2.csv"), 'a')
+  f = open(join(V_PATH, "OSR_CAFCA_DPM_p_1_q_9.csv"), 'a')
   while iterations < MAX_ITERATION:
     print("============== Iterations: " + str(iterations))
     start_time = time.time()
@@ -1381,7 +1507,10 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
             break
           candidate_patterns.append(GetPattern(clusters[j][i], clusters[j][i+1], DELAY_THRESHOLD, MIN_LEN_THRESHOLD))
         if len(candidate_patterns) == 0:
-          patterns[j] = copy.deepcopy(clusters[j][i])
+          if len(clusters[j]) == 0:
+            patterns[j] = None
+          else:
+            patterns[j] = copy.deepcopy(clusters[j][0])
         else:
           pattern, gr_value = DisCrimPattern(candidate_patterns, clusters[j], PIM_Batch, 0.8, DELAY_THRESHOLD) # APPEARANCE_THRESHOLD
           patterns[j] = copy.deepcopy(pattern)
@@ -1452,7 +1581,7 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
 
     gr_result = ""
     if len(GR_values) == 0:
-      GR_valeus = DisCrimPatternEval(patterns, PIM_Batch, 0.8, DELAY_THRESHOLD)
+      GR_values = DisCrimPatternEval(patterns, clusters, PIM_Batch, 0.8, DELAY_THRESHOLD)
     for value in GR_values:
       gr_result += str(value) + ","
     gr_result = gr_result[:-1]
@@ -1491,12 +1620,13 @@ def FCM(cl_type, IM_, DELAY_THRESHOLD, SIM_THRESHOLD, MIN_LEN_THRESHOLD, C_VALUE
   f.close()
   return patterns, clusters
 
-def DisCrimPatternEval(patterns, cluster, PIM_Batch, APPR_THRESHOLD, d_threshold):
+def DisCrimPatternEval(patterns, clusters, PIM_Batch, APPR_THRESHOLD, d_threshold):
   GR_values = []
-  for pattern in patterns:
+  for i in range(len(patterns)):
     O_f = 0
     O_p = 0
-    for im in cluster: # Appearance checking on the failed & belonged cluster
+    pattern = patterns[i]
+    for im in clusters[i]: # Appearance checking on the failed & belonged cluster
       temp = CAFCASimCal(pattern, im,d_threshold)
       if temp > APPR_THRESHOLD:
         O_f += 1
@@ -1507,8 +1637,7 @@ def DisCrimPatternEval(patterns, cluster, PIM_Batch, APPR_THRESHOLD, d_threshold
     if O_p == 0:
       GR_values.append(1)
     else:
-      GR_values.append((O_f / len(cluster) / (O_p / len(PIM_Batch))))
-
+      GR_values.append((O_f / len(clusters[i]) / (O_p / len(PIM_Batch))))
   return GR_values
 
 def DisCrimPattern(candidate_patterns, cluster, PIM_Batch, APPR_THRESHOLD, d_threshold):
@@ -1554,7 +1683,10 @@ def Silhouette(simvalues_item, IM_, clusters):
         a_i = temp / len(clusters[j])
       else:
         b_list.append(temp / len(clusters[j]))
-    b_i = min(b_list)
+    if not b_list:
+      b_i = 0
+    else:
+      b_i = min(b_list)
     sp.append((b_i - a_i) / max(a_i, b_i))
   return float(sum(sp)) / float(len(sp))
 
@@ -1719,8 +1851,8 @@ def PIT(ideal_patterns, patterns, d_threshold, oracle_batch):
         for state_a, state_b in zip(id_pattern[3], gen_pattern[3]):
             env_sim.append(EnvStateComparePIT(state_a, state_b))
       if len(env_sim) != 0:
-        if max_PIT < (len(lcs) / len(id_pattern[2])) * 0.8 + np.nanmean(env_sim) * 0.2:
-          max_PIT = (len(lcs) / len(id_pattern[2])) * 0.8 + np.nanmean(env_sim) * 0.2
+        if max_PIT < (len(lcs) / len(id_pattern[2])) * 0.1 + np.nanmean(env_sim) * 0.9:
+          max_PIT = (len(lcs) / len(id_pattern[2])) * 0.1 + np.nanmean(env_sim) * 0.9
           # matched_id = idx_gen
       else:
         if max_PIT < (len(lcs) / len(id_pattern[2])):
@@ -1758,7 +1890,7 @@ def PITW(ideal_patterns, patterns, d_threshold, oracle_batch):
         for state_a, state_b in zip(id_pattern[3], gen_pattern[3]):
           env_sim.append(EnvStateComparePIT(state_a, state_b))
       if len(env_sim) != 0:
-        PITW = ((len(lcs) + weight_lcs) / (len(id_pattern[2]) + weight_id)) * 0.8 + np.nanmean(env_sim) * 0.2
+        PITW = ((len(lcs) + weight_lcs) / (len(id_pattern[2]) + weight_id)) * 0.1 + np.nanmean(env_sim) * 0.9
       else:
         PITW = ((len(lcs) + weight_lcs) / (len(id_pattern[2]) + weight_id))
       if max_PITW < PITW:
@@ -1996,6 +2128,7 @@ def RunFCM(IM_, oracle, exp_type, PIM_): # exp_type : 0 -> OSR 1 -> COLL
         if assign_flag:
           C_VALUE += 1
         oracle_batch.append(copy.deepcopy(cl_batch))
+      ideal_patterns = IdealPatternReader()
     else:
       np.random.shuffle(nIM_)
       IM_Batch = []
@@ -2018,7 +2151,7 @@ def RunFCM(IM_, oracle, exp_type, PIM_): # exp_type : 0 -> OSR 1 -> COLL
         if assign_flag:
           oracle_batch.append(copy.deepcopy(cl_batch))
       IM_Batch = np.array(IM_Batch)
-    ideal_patterns = IdealPatternReader()[:-2]
+      ideal_patterns = IdealPatternReader()[:-2]
 
     np.random.shuffle(nPIM_)
     PIM_Batch = nPIM_[0:100]
@@ -2029,7 +2162,7 @@ def RunFCM(IM_, oracle, exp_type, PIM_): # exp_type : 0 -> OSR 1 -> COLL
     if i != 0 and i % 3 == 0:
       j += 1
     if exp_type == 0: # OSR // 0: FCM, 1: CAFCA, 2:KS2M
-      patterns, clusters = FCM(0, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle_batch, IM_Index, PIM_Batch)
+      patterns, clusters = FCM(1, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle_batch, IM_Index, PIM_Batch)
     elif exp_type == 1: # COLL // 0: FCM, 1: CAFCA, 2:KS2M
       patterns, clusters = FCM(1, IM_Batch, 0.05, (1/C_VALUE) + (0.1*j), 4+(3*(i%3)), C_VALUE, ideal_patterns, oracle, IM_Index, PIM_Batch)
     # end_time = time.time()
@@ -2052,15 +2185,18 @@ def RunFCM(IM_, oracle, exp_type, PIM_): # exp_type : 0 -> OSR 1 -> COLL
   # f.close()
 
 def main():
-  IM, FIM, classification_data, PIM = IMGenerator()
+  # IM, FIM, classification_data, PIM = IMGenerator()
+  IM, FIM, classification_data, PIM = IMGeneratorMCI()
   # IMtoTxt(IM,'InteractionModels.txt')
   # IMtoTxt(FIM, 'FailedInteractionModels.txt')
   # FIM = TxttoIM('FailedInteractionModels.txt')
 
-  # RunSPADE(FIM)
+  random.shuffle(FIM)
+
+  RunSPADE(FIM)
   # RunLogLiner(FIM, classification_data)
   # RunFCM(FIM, classification_data[:-2], 1) # 0 : OSR, 1 : COLL
-  RunFCM(FIM, classification_data, 0, PIM) # 0 : OSR, 1 : COLL
+  # RunFCM(FIM, classification_data, 0, PIM) # 0 : OSR, 1 : COLL
 
 if __name__ == "__main__":
   main()
