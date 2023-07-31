@@ -2068,33 +2068,3 @@ def main():
 
 if __name__ == "__main__":
   main()
-
-# """# **Git synchronizing**
-#
-# If you finish your work, please run the following code to update the git repository.
-#
-# """
-#
-# # Commented out IPython magic to ensure Python compatibility.
-# PROJECT_PATH = join(gdrive_root, 'CAFCA---Context-Aware-Fuzzy-Clustering-for-Analyzing-Interaction-Failures')
-# GIT_USERNAME = 'abalon1210'
-# GIT_TOKEN = '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' # SW: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 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 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 HS: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 LJ: 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
-# GIT_REPO = 'CAFCA---Context-Aware-Fuzzy-Clustering-for-Analyzing-Interaction-Failures'
-#
-# #print(PROJECT_PATH)
-#
-# GIT_PATH = 'https://' + GIT_TOKEN + '@github.com/' + GIT_USERNAME + '/' + GIT_REPO + '.git'
-# #print("GIT_PATH: ", GIT_PATH)
-#
-# # %cd '{PROJECT_PATH}'
-# !git config --global user.email 'rienshaliu@gmail.com'           # Your Github e-mail  # SW: abalon1210@daum.net LJ: rienshaliu@gmail.com HS: hansu1125@gmail.com
-# !git config --global user.name 'Rienshaliu'                     # Your Github ID      # SW: abalon1210          LJ: Rienshaliu              HS: hsKim25
-#
-# # !git reset
-# !git add 'CAFCA-Colab.ipynb'
-# # !git commit -m 'Implement the LOGFAULTFLAGGER'                           # Add your commit message here
-# !git remote rm origin
-# !git remote add origin "{GIT_PATH}"
-# #!git remote -v
-# #!git push origin :BRANCH_NAME   #Delete the branch in remote
-# !git push origin master
